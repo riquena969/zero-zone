@@ -45,11 +45,17 @@ export const VAULT_PRESS_MIN = 0.4; // componente mínimo do movimento na direç
 export const VAULT_MAX_SCAN = 6; // espessura máxima de parede atravessável (células)
 
 // ---------- Bolinhas ----------
+// Distinguíveis por FORMA/tamanho/comportamento, não só cor (daltonismo).
 export const BALL_TYPES = {
   normal: { r: 12, axisSpeed: 170 },
-  // veloz / gigante / fantasma / perseguidora entram na fatia 7
+  veloz: { r: 8, axisSpeed: 272 }, // pequena, 1.6×
+  gigante: { r: 26, axisSpeed: 119 }, // enorme, 0.7× — difícil de cercar
+  fantasma: { r: 12, axisSpeed: 170 }, // esmaece em ciclos; SEMPRE colide
+  perseguidora: { r: 11, axisSpeed: 150, homing: true, turnRate: 1.2 }, // rad/s — anti-camping
 };
 export const MAX_AXIS_SPEED = 420; // teto do infinito (anti-tunneling)
+export const GHOST_CYCLE = 3; // s por ciclo de esmaecimento do fantasma
+export const GHOST_MIN_ALPHA = 0.2; // piso de opacidade (nunca some de vez — justiça)
 
 // ---------- Parede ----------
 export const WALL_TIP_SPEED = 530; // px/s por ponta (meia arena ≈ 1,2s)

@@ -21,7 +21,7 @@ import {
 } from '../config.js';
 import { createGrid } from './grid.js';
 import { circlesOverlap } from './collide.js';
-import { makeBall, stepBall } from './balls.js';
+import { makeBall, stepBall, steerHoming } from './balls.js';
 import { spawnWall, stepWall } from './walls.js';
 import { makePlayer, movePlayer, depenetrate, fits, safestPoint, updateVault } from './player.js';
 
@@ -172,8 +172,11 @@ export function createGame({ level, lives }) {
       }
     }
 
-    // bolinhas
-    for (const b of balls) stepBall(b, grid, dt);
+    // bolinhas (perseguidora vira o nariz na direção do orbe antes de andar)
+    for (const b of balls) {
+      if (b.homing) steerHoming(b, player.x, player.y, dt);
+      stepBall(b, grid, dt);
+    }
 
     // toque de bolinha (ignorado durante i-frames)
     if (game.status === 'playing' && player.iframes <= 0) {

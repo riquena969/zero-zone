@@ -3,6 +3,7 @@
 
 import { WALL, CLAIMED, LOGICAL_W, LOGICAL_H, HUD_H, CELL, VAULT_TIME } from '../config.js';
 import { pendingCells } from '../game/walls.js';
+import { ghostAlpha } from '../game/balls.js';
 import { STRINGS } from './strings.js';
 
 // Botão de pausa na HUD (hit test compartilhado com o main via este export)
@@ -140,12 +141,45 @@ export function createRenderer(vp) {
       }
     }
 
-    // bolinhas
+    // bolinhas (cada tipo tem forma/comportamento próprio, não só cor)
     for (const b of game.balls) {
-      ctx.fillStyle = theme.balls[b.type];
+      const cor = theme.balls[b.type];
+
+      if (b.type === 'fantasma') {
+        // corpo esmaece em ciclos; contorno tênue NUNCA some (justiça)
+        ctx.globalAlpha = ghostAlpha(b);
+        ctx.fillStyle = cor;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.45;
+        ctx.strokeStyle = cor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+
+      ctx.fillStyle = cor;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
       ctx.fill();
+
+      if (b.homing) {
+        // "olho" no nariz — mostra para onde ela está virando (e mete medo)
+        const ex = b.x + Math.cos(b.heading) * b.r * 0.55;
+        const ey = b.y + Math.sin(b.heading) * b.r * 0.55;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(ex, ey, b.r * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(ex + Math.cos(b.heading) * 1.5, ey + Math.sin(b.heading) * 1.5, b.r * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // orbe do jogador (pisca a 4Hz durante i-frames)
