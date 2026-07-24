@@ -18,12 +18,18 @@ import {
   IFRAMES_TIME,
   LIVES_START,
   TIME_BONUS_START,
+  CLOCK_DURATION,
+  CLOCK_FACTOR,
+  TURBO_FACTOR,
+  SHIELD_IFRAMES,
 } from '../config.js';
 import { createGrid } from './grid.js';
 import { circlesOverlap } from './collide.js';
 import { makeBall, stepBall, steerHoming } from './balls.js';
 import { spawnWall, stepWall } from './walls.js';
 import { makePlayer, movePlayer, depenetrate, fits, safestPoint, updateVault } from './player.js';
+import { createPowerups, unlockedTypes } from './powerups.js';
+import { mulberry32 } from './rng.js';
 
 export function createGame({ level, lives }) {
   const grid = createGrid({ cols: GRID_W, rows: GRID_H, cell: CELL, originX: 0, originY: ARENA_Y });
@@ -44,8 +50,22 @@ export function createGame({ level, lives }) {
     countdown: level.countdown ?? 0, // 3-2-1 congelado no início da zona
     timeLeft: TIME_BONUS_START, // regressivo, só para bônus — a zona nunca falha por tempo
     lives: lives ?? LIVES_START,
+    effects: { clock: 0, shield: false, turbo: false },
+    powerups: null,
+    wallSpeed: WALL_TIP_SPEED, // velocidade da parede EM PROGRESSO (turbo mexe aqui)
+    applyPowerup,
     update,
   };
+
+  if (unlockedTypes(game.zone).length) {
+    game.powerups = createPowerups({ zone: game.zone, rng: mulberry32(level.seed ?? 1) });
+  }
+
+  function applyPowerup(type) {
+    if (type === 'relogio') game.effects.clock = CLOCK_DURATION;
+    else if (type === 'escudo') game.effects.shield = true; // não acumula: é booleano
+    else if (type === 'turbo') game.effects.turbo = true;
+  }
 
   function loseLife(cause, events) {
     game.lives--;
@@ -75,7 +95,10 @@ export function createGame({ level, lives }) {
       return;
     }
     game.wall = w;
-    events.push({ type: 'wallStart', axis });
+    game.wallSpeed = WALL_TIP_SPEED * (game.effects.turbo ? TURBO_FACTOR : 1);
+    const turbo = game.effects.turbo;
+    game.effects.turbo = false; // consumido no disparo
+    events.push({ type: 'wallStart', axis, turbo });
   }
 
   // Parede completou: flood fill, claima componentes sem bola, arruma o jogador.
@@ -147,6 +170,7 @@ export function createGame({ level, lives }) {
     // timers
     if (player.iframes > 0) player.iframes = Math.max(0, player.iframes - dt);
     if (game.timeLeft > 0) game.timeLeft = Math.max(0, game.timeLeft - dt);
+    if (game.effects.clock > 0) game.effects.clock = Math.max(0, game.effects.clock - dt);
 
     // jogador: vault primeiro; se saltou, o movimento deste tick já foi o salto
     const vr = updateVault(player, grid, input.moveX ?? 0, input.moveY ?? 0, dt);
@@ -156,12 +180,22 @@ export function createGame({ level, lives }) {
       movePlayer(player, grid, input.moveX ?? 0, input.moveY ?? 0, PLAYER_SPEED, dt);
     }
 
+    // power-ups: spawn/expiração + coleta
+    if (game.powerups) {
+      events.push(...game.powerups.update(dt, { grid, player, balls }));
+      const got = game.powerups.tryCollect(player);
+      if (got) {
+        applyPowerup(got);
+        events.push({ type: 'powerup', ptype: got });
+      }
+    }
+
     // trigger de parede
     tryTrigger(input, events);
 
     // passo da parede em crescimento
     if (game.wall) {
-      const r = stepWall(game.wall, grid, balls, dt, WALL_TIP_SPEED);
+      const r = stepWall(game.wall, grid, balls, dt, game.wallSpeed);
       events.push(...r.events);
       if (r.shattered) {
         game.wall = null;
@@ -172,22 +206,29 @@ export function createGame({ level, lives }) {
       }
     }
 
-    // bolinhas (perseguidora vira o nariz na direção do orbe antes de andar)
+    // bolinhas (relógio desacelera o TEMPO delas; perseguidora vira o nariz antes)
+    const ballDt = game.effects.clock > 0 ? dt * CLOCK_FACTOR : dt;
     for (const b of balls) {
-      if (b.homing) steerHoming(b, player.x, player.y, dt);
-      stepBall(b, grid, dt);
+      if (b.homing) steerHoming(b, player.x, player.y, ballDt);
+      stepBall(b, grid, ballDt);
     }
 
-    // toque de bolinha (ignorado durante i-frames)
+    // toque de bolinha (ignorado durante i-frames; escudo absorve 1)
     if (game.status === 'playing' && player.iframes <= 0) {
       for (const b of balls) {
         if (circlesOverlap(player.x, player.y, player.r, b.x, b.y, b.r)) {
-          loseLife('ball', events);
-          if (game.status === 'playing') {
-            const pt = safestPoint(grid, balls, player.x, player.y, player.r);
-            if (pt) {
-              player.x = pt.x;
-              player.y = pt.y;
+          if (game.effects.shield) {
+            game.effects.shield = false;
+            player.iframes = SHIELD_IFRAMES;
+            events.push({ type: 'shieldBreak' });
+          } else {
+            loseLife('ball', events);
+            if (game.status === 'playing') {
+              const pt = safestPoint(grid, balls, player.x, player.y, player.r);
+              if (pt) {
+                player.x = pt.x;
+                player.y = pt.y;
+              }
             }
           }
           break;

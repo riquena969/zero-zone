@@ -1,7 +1,16 @@
 // Renderer do mundo (fatia 1: flat, sem glow — o neon de verdade vem na fatia 13).
 // Desenha a partir do estado puro do jogo; nunca muta nada.
 
-import { WALL, CLAIMED, LOGICAL_W, LOGICAL_H, HUD_H, CELL, VAULT_TIME } from '../config.js';
+import {
+  WALL,
+  CLAIMED,
+  LOGICAL_W,
+  LOGICAL_H,
+  HUD_H,
+  CELL,
+  VAULT_TIME,
+  POWERUP_LIFETIME,
+} from '../config.js';
 import { pendingCells } from '../game/walls.js';
 import { ghostAlpha } from '../game/balls.js';
 import { STRINGS } from './strings.js';
@@ -64,6 +73,16 @@ export function createRenderer(vp) {
     ctx.fillText(`${STRINGS.hud.zone} ${ui.zone}`, 330, HUD_H / 2);
     ctx.fillText(`${STRINGS.hud.score} ${ui.score}`, 470, HUD_H / 2);
     ctx.fillText(`${STRINGS.hud.hi} ${ui.hi}`, 700, HUD_H / 2);
+
+    // efeitos ativos (relógio restante, turbo armado)
+    if (game.effects) {
+      ctx.fillStyle = theme.powerup;
+      let fx = '';
+      if (game.effects.clock > 0) fx += `◷${game.effects.clock.toFixed(1)} `;
+      if (game.effects.turbo) fx += '»» ';
+      if (fx) ctx.fillText(fx.trim(), 840, HUD_H / 2);
+      ctx.fillStyle = theme.hudText;
+    }
 
     // progresso
     const pct = Math.floor(game.grid.coveredFraction() * 100);
@@ -182,6 +201,41 @@ export function createRenderer(vp) {
       }
     }
 
+    // power-up no chão (pulsa; pisca rápido quando está para sumir)
+    const item = game.powerups && game.powerups.item;
+    if (item) {
+      const restante = POWERUP_LIFETIME - item.age;
+      const piscaExpirando = restante < 2 && Math.floor(item.age * 6) % 2 === 0;
+      if (!piscaExpirando) {
+        const pulso = 1 + 0.12 * Math.sin(item.age * 5);
+        ctx.strokeStyle = theme.powerup;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.r * pulso, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = theme.powerup;
+        if (item.type === 'relogio') {
+          // ponteiros de relógio
+          ctx.beginPath();
+          ctx.moveTo(item.x, item.y);
+          ctx.lineTo(item.x, item.y - item.r * 0.55);
+          ctx.moveTo(item.x, item.y);
+          ctx.lineTo(item.x + item.r * 0.4, item.y + item.r * 0.15);
+          ctx.stroke();
+        } else if (item.type === 'escudo') {
+          ctx.beginPath();
+          ctx.arc(item.x, item.y, item.r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // turbo: chevron duplo
+          ctx.font = `bold ${item.r * 1.2}px "Courier New", monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('»', item.x, item.y + 1);
+        }
+      }
+    }
+
     // orbe do jogador (pisca a 4Hz durante i-frames)
     const p = game.player;
     const piscando = p.iframes > 0 && Math.floor(p.iframes * 8) % 2 === 0;
@@ -194,6 +248,15 @@ export function createRenderer(vp) {
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // anel do escudo ativo
+    if (game.effects && game.effects.shield && !piscando) {
+      ctx.strokeStyle = theme.powerup;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2);
       ctx.stroke();
     }
 

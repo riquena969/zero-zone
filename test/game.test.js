@@ -240,6 +240,93 @@ test('bônus de tempo: decresce jogando, congelado no countdown, nunca negativo'
   assert.equal(game.timeLeft, 0, 'não fica negativo');
 });
 
+// ---------- Fatia 8: efeitos dos power-ups ----------
+
+test('relógio: bolas a meia velocidade enquanto dura, depois normal', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  const b = game.balls[0];
+  game.applyPowerup('relogio');
+  assert.ok(game.effects.clock > 0);
+  const x0 = b.x;
+  game.update(IDLE, DT);
+  const passoLento = Math.abs(b.x - x0);
+  // espera o efeito acabar
+  tick(game, 60 * 6);
+  const x1 = b.x;
+  game.update(IDLE, DT);
+  const passoNormal = Math.abs(b.x - x1);
+  assert.ok(Math.abs(passoLento * 2 - passoNormal) < 0.01, `${passoLento} vs ${passoNormal}`);
+});
+
+test('escudo: absorve 1 toque sem perder vida e não acumula', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  game.applyPowerup('escudo');
+  game.applyPowerup('escudo'); // segundo é ignorado
+  assert.equal(game.effects.shield, true);
+  const bola = game.balls[0];
+  game.player.x = bola.x;
+  game.player.y = bola.y;
+  const evs = game.update(IDLE, DT);
+  assert.ok(evs.some((e) => e.type === 'shieldBreak'), 'escudo estourou');
+  assert.ok(!evs.some((e) => e.type === 'lifeLost'), 'vida intacta');
+  assert.equal(game.lives, 3);
+  assert.equal(game.effects.shield, false);
+  // sem escudo (e sem i-frames), o próximo toque mata
+  game.player.iframes = 0;
+  game.player.x = game.balls[0].x;
+  game.player.y = game.balls[0].y;
+  const evs2 = game.update(IDLE, DT);
+  assert.ok(evs2.some((e) => e.type === 'lifeLost'));
+});
+
+test('escudo NÃO protege contra quebra de parede', () => {
+  const game = createGame({
+    level: { targetPct: 0.6, balls: [{ type: 'normal', x: 600, y: 300, dirX: 1, dirY: 1 }] },
+  });
+  game.applyPowerup('escudo');
+  game.update({ ...IDLE, hJust: true }, DT);
+  const evs = tick(game, 60);
+  assert.ok(evs.some((e) => e.type === 'lifeLost' && e.cause === 'shatter'), 'quebra custou vida');
+  assert.equal(game.effects.shield, true, 'escudo continua (é proteção corporal)');
+});
+
+test('turbo: a próxima parede cresce mais rápido e o efeito é consumido', () => {
+  const semTurbo = createGame({ level: nivelTeste(0.6) });
+  semTurbo.update({ ...IDLE, hJust: true }, DT);
+  const comTurbo = createGame({ level: nivelTeste(0.6) });
+  comTurbo.applyPowerup('turbo');
+  comTurbo.update({ ...IDLE, hJust: true }, DT);
+  assert.equal(comTurbo.effects.turbo, false, 'consumido no disparo');
+  // após alguns ticks, a parede turbo tem ~2× mais células pendentes
+  const { pendingCells } = awaitImportWalls();
+  for (let i = 0; i < 10; i++) {
+    semTurbo.update(IDLE, DT);
+    comTurbo.update(IDLE, DT);
+  }
+  const lenNormal = pendingCells(semTurbo.wall).length;
+  const lenTurbo = pendingCells(comTurbo.wall).length;
+  assert.ok(lenTurbo >= lenNormal * 1.7, `turbo ${lenTurbo} vs normal ${lenNormal}`);
+});
+
+// import síncrono auxiliar (o módulo já foi carregado pelo game)
+import { pendingCells as _pendingCells } from '../src/game/walls.js';
+function awaitImportWalls() {
+  return { pendingCells: _pendingCells };
+}
+
+test('zona 3+: power-up spawna de verdade durante o jogo', () => {
+  const game = createGame({
+    level: {
+      targetPct: 0.99,
+      zone: 3,
+      seed: 42,
+      balls: [{ type: 'normal', x: 200, y: 200, dirX: 1, dirY: -1 }],
+    },
+  });
+  const evs = tick(game, 60 * 25); // 25s
+  assert.ok(evs.some((e) => e.type === 'powerupSpawn'), 'spawnou na zona 3');
+});
+
 test('realocação após fill concede i-frames', () => {
   const game = createGame({ level: nivelTeste(0.6) });
   game.update({ ...IDLE, hJust: true }, DT);

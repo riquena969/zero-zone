@@ -29,6 +29,19 @@ export const SPAWN_MARGIN = 48; // px das bordas da arena para spawn de bolas
 export const SPAWN_MIN_PLAYER_DIST = 220; // px mínimos entre bola e jogador no spawn
 export const SPAWN_MIN_BALL_DIST = 60; // px mínimos entre bolas no spawn
 
+// ---------- Power-ups ----------
+export const POWERUP_UNLOCK = { relogio: 3, escudo: 5, turbo: 7 }; // zona em que entram
+export const POWERUP_INTERVAL = 20; // s entre spawns
+export const POWERUP_RETRY = 2; // s para tentar de novo se não achou posição
+export const POWERUP_LIFETIME = 8; // s no chão antes de sumir
+export const POWERUP_RADIUS = 14;
+export const POWERUP_MIN_PLAYER_DIST = 160; // coletar exige se deslocar
+export const POWERUP_MIN_BALL_DIST = 80;
+export const CLOCK_DURATION = 5; // s de bolas lentas
+export const CLOCK_FACTOR = 0.5;
+export const TURBO_FACTOR = 2; // próxima parede 2× mais rápida
+export const SHIELD_IFRAMES = 1; // s de invencibilidade ao estourar o escudo
+
 // ---------- Pontuação ----------
 export const POINTS_PER_PCT = 100; // pontos por 1% conquistado (antes dos multiplicadores)
 export const BIG_CHUNK_PCT = 0.15; // fill único ≥ 15% da arena vale 2×
@@ -82,6 +95,7 @@ export const THEMES = {
     },
     hudText: '#bfefff',
     danger: '#ff3860',
+    powerup: '#66ffc2',
   },
   synthwave: {
     label: 'Synthwave',
@@ -102,6 +116,7 @@ export const THEMES = {
     },
     hudText: '#ffd6f4',
     danger: '#ff2e63',
+    powerup: '#7cffb0',
   },
   fliperama: {
     label: 'Fliperama',
@@ -122,6 +137,7 @@ export const THEMES = {
     },
     hudText: '#f8f8f2',
     danger: '#ff006e',
+    powerup: '#00f593',
   },
 };
 
