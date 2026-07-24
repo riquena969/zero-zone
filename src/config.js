@@ -11,6 +11,25 @@ export const GRID_W = LOGICAL_W / CELL; // 160
 export const GRID_H = (LOGICAL_H - HUD_H) / CELL; // 83
 export const ARENA_Y = HUD_H; // y lógico onde a arena começa
 
+// ---------- Estados da grade ----------
+export const OPEN = 0;
+export const WALL = 1;
+export const CLAIMED = 2;
+
+// ---------- Jogador ----------
+export const PLAYER_RADIUS = 10;
+export const PLAYER_SPEED = 300; // px/s
+
+// ---------- Bolinhas ----------
+export const BALL_TYPES = {
+  normal: { r: 12, axisSpeed: 170 },
+  // veloz / gigante / fantasma / perseguidora entram na fatia 7
+};
+export const MAX_AXIS_SPEED = 420; // teto do infinito (anti-tunneling)
+
+// ---------- Parede ----------
+export const WALL_TIP_SPEED = 530; // px/s por ponta (meia arena ≈ 1,2s)
+
 // ---------- Temas (paletas selecionáveis pelo jogador) ----------
 // Cada tema define TODAS as cores do jogo. Trocar de tema re-coze os sprites de glow.
 export const THEMES = {
