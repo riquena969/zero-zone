@@ -200,6 +200,30 @@ test('vault no jogo: atravessa parede pronta e emite evento', () => {
   assert.ok(game.player.x > face + 8, `do outro lado: x=${game.player.x}`);
 });
 
+// ---------- Fatia 5: countdown e vidas customizadas ----------
+
+test('countdown: bolas congeladas, triggers negados, "go" libera tudo', () => {
+  const game = createGame({
+    level: { targetPct: 0.6, countdown: 0.2, balls: [{ type: 'normal', x: 200, y: 200, dirX: 1, dirY: 1 }] },
+  });
+  const b0 = { x: game.balls[0].x, y: game.balls[0].y };
+  const evs = game.update({ ...IDLE, hJust: true }, DT);
+  assert.ok(evs.some((e) => e.type === 'denied' && e.reason === 'countdown'), 'trigger negado');
+  assert.deepEqual({ x: game.balls[0].x, y: game.balls[0].y }, b0, 'bola congelada');
+  // jogador PODE se reposicionar durante o countdown
+  game.update({ ...IDLE, moveX: 1 }, DT);
+  assert.ok(game.player.x > 640, 'jogador se moveu');
+  // termina o countdown
+  const all = tick(game, 15);
+  assert.ok(all.some((e) => e.type === 'go'), 'evento go');
+  assert.notDeepEqual({ x: game.balls[0].x, y: game.balls[0].y }, b0, 'bola se movendo');
+});
+
+test('vidas iniciais customizadas (progressão entre zonas)', () => {
+  const game = createGame({ level: nivelTeste(0.6), lives: 5 });
+  assert.equal(game.lives, 5);
+});
+
 test('realocação após fill concede i-frames', () => {
   const game = createGame({ level: nivelTeste(0.6) });
   game.update({ ...IDLE, hJust: true }, DT);

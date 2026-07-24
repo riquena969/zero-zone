@@ -91,3 +91,30 @@ body {
   background: rgba(0, 229, 255, 0.12);
   color: #ffffff;
 }
+
+.menu-panel p {
+  color: #bfefff;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+/* ---------- Barra de tutorial (ZONA 1) ---------- */
+.tutorial-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  color: rgba(191, 239, 255, 0.85);
+  background: rgba(5, 10, 18, 0.75);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 6px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tutorial-bar.hidden {
+  display: none;
+}

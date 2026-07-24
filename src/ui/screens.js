@@ -48,3 +48,46 @@ export function createPauseMenu(root, { onResume, onRestart, onTheme }) {
     },
   };
 }
+
+export function createLevelClearMenu(root, { onNext }) {
+  const el = document.createElement('div');
+  el.className = 'menu hidden';
+  el.innerHTML = `
+    <div class="menu-panel">
+      <h2 data-slot="title"></h2>
+      <p data-slot="stats"></p>
+      <button data-act="next">${STRINGS.levelclear.next}</button>
+    </div>
+  `;
+  root.appendChild(el);
+  el.querySelector('[data-act="next"]').addEventListener('click', () => onNext());
+
+  return {
+    show(zone, coveredFraction) {
+      el.querySelector('[data-slot="title"]').textContent = STRINGS.levelclear.dominated(zone);
+      el.querySelector('[data-slot="stats"]').textContent = STRINGS.levelclear.conquered(
+        Math.floor(coveredFraction * 100),
+      );
+      el.classList.remove('hidden');
+    },
+    hide() {
+      el.classList.add('hidden');
+    },
+  };
+}
+
+// Barra de tutorial da ZONA 1 (dicas contextuais one-shot chegam na fatia 9)
+export function createTutorialBar(root) {
+  const el = document.createElement('div');
+  el.className = 'tutorial-bar hidden';
+  el.textContent = STRINGS.tutorial;
+  root.appendChild(el);
+  return {
+    show() {
+      el.classList.remove('hidden');
+    },
+    hide() {
+      el.classList.add('hidden');
+    },
+  };
+}

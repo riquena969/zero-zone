@@ -23,6 +23,15 @@ export const STRINGS = {
     title: 'FIM DE JOGO',
     restart: 'aperte R para tentar de novo',
   },
+  countdown: {
+    go: 'VAI!',
+  },
+  levelclear: {
+    dominated: (zone) => `ZONA ${zone} DOMINADA!`,
+    conquered: (pct) => `${pct}% conquistado`,
+    next: 'PRÓXIMA ZONA',
+  },
+  tutorial: 'SETAS/WASD mover · H parede horizontal · V parede vertical · segure contra uma parede para escalar',
   dev: {
     slice: 'fatia 1 — jogo mínimo',
   },

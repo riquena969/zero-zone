@@ -22,6 +22,13 @@ export const PLAYER_SPEED = 300; // px/s
 export const IFRAMES_TIME = 2; // s de invencibilidade após morte/quebra/realocação
 export const LIVES_START = 3;
 
+// ---------- Níveis ----------
+export const COUNTDOWN_TIME = 3; // s de 3-2-1 no início da zona (bolas congeladas)
+export const LIVES_MAX = 6; // +1 vida por zona completa, até este teto
+export const SPAWN_MARGIN = 48; // px das bordas da arena para spawn de bolas
+export const SPAWN_MIN_PLAYER_DIST = 220; // px mínimos entre bola e jogador no spawn
+export const SPAWN_MIN_BALL_DIST = 60; // px mínimos entre bolas no spawn
+
 // ---------- Vault (pular parede) ----------
 export const VAULT_TIME = 0.4; // s segurando contra a parede
 export const VAULT_PRESS_MIN = 0.4; // componente mínimo do movimento na direção da parede

@@ -76,6 +76,35 @@ export function createRenderer(vp) {
     ctx.fillRect(PAUSE_RECT.x + 21, PAUSE_RECT.y + 8, 7, 20);
   }
 
+  // Countdown 3-2-1: número gigante + setinhas mostrando para onde cada bola vai
+  function drawCountdown(game, theme) {
+    for (const b of game.balls) {
+      const len = Math.hypot(b.vx, b.vy) || 1;
+      const ux = b.vx / len;
+      const uy = b.vy / len;
+      const x1 = b.x + ux * (b.r + 22);
+      const y1 = b.y + uy * (b.r + 22);
+      ctx.strokeStyle = theme.balls[b.type];
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(b.x + ux * (b.r + 6), b.y + uy * (b.r + 6));
+      ctx.lineTo(x1, y1);
+      // ponta da seta
+      const ang = Math.atan2(uy, ux);
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - 8 * Math.cos(ang - 0.5), y1 - 8 * Math.sin(ang - 0.5));
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - 8 * Math.cos(ang + 0.5), y1 - 8 * Math.sin(ang + 0.5));
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = theme.player;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 120px "Courier New", monospace';
+    ctx.fillText(String(Math.ceil(game.countdown)), LOGICAL_W / 2, (HUD_H + LOGICAL_H) / 2);
+  }
+
   function drawOverlay(theme, titleColor, title, hint) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(0, HUD_H, LOGICAL_W, LOGICAL_H - HUD_H);
@@ -143,6 +172,8 @@ export function createRenderer(vp) {
       ctx.arc(p.x, p.y, p.r + 7, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
+
+    if (game.countdown > 0) drawCountdown(game, theme);
 
     drawHud(game, theme, ui);
     if (game.status === 'won') {

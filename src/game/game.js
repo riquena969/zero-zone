@@ -24,7 +24,7 @@ import { makeBall, stepBall } from './balls.js';
 import { spawnWall, stepWall } from './walls.js';
 import { makePlayer, movePlayer, depenetrate, fits, safestPoint, updateVault } from './player.js';
 
-export function createGame({ level }) {
+export function createGame({ level, lives }) {
   const grid = createGrid({ cols: GRID_W, rows: GRID_H, cell: CELL, originX: 0, originY: ARENA_Y });
   const player = makePlayer({
     x: level.playerX ?? LOGICAL_W / 2,
@@ -39,7 +39,9 @@ export function createGame({ level }) {
     wall: null, // parede em crescimento (máx. 1)
     status: 'playing', // 'playing' | 'won' | 'gameover'
     targetPct: level.targetPct,
-    lives: LIVES_START,
+    zone: level.zone ?? 1,
+    countdown: level.countdown ?? 0, // 3-2-1 congelado no início da zona
+    lives: lives ?? LIVES_START,
     update,
   };
 
@@ -124,6 +126,21 @@ export function createGame({ level }) {
   function update(input, dt) {
     const events = [];
     if (game.status !== 'playing') return events;
+
+    // countdown 3-2-1: mundo congelado, jogador pode se reposicionar
+    if (game.countdown > 0) {
+      const prevCeil = Math.ceil(game.countdown);
+      game.countdown -= dt;
+      movePlayer(player, grid, input.moveX ?? 0, input.moveY ?? 0, PLAYER_SPEED, dt);
+      if (input.hJust || input.vJust) events.push({ type: 'denied', reason: 'countdown' });
+      if (game.countdown <= 0) {
+        game.countdown = 0;
+        events.push({ type: 'go' });
+      } else if (Math.ceil(game.countdown) !== prevCeil) {
+        events.push({ type: 'countdown', n: Math.ceil(game.countdown) });
+      }
+      return events;
+    }
 
     // timers
     if (player.iframes > 0) player.iframes = Math.max(0, player.iframes - dt);
