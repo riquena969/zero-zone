@@ -428,6 +428,11 @@ canvas.addEventListener('click', (e) => {
   }
 });
 
+// PWA: service worker só em produção (https) — em dev, cache atrapalha
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
 // ---------- Loop ----------
 machine.goto('title');
 createLoop({
