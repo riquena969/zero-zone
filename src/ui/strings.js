@@ -14,6 +14,14 @@ export const STRINGS = {
     resume: 'CONTINUAR',
     restart: 'REINICIAR ZONA',
     theme: 'TEMA',
+    vibrate: 'VIBRAÇÃO',
+    sound: 'SOM',
+    on: 'LIGADA',
+    off: 'DESLIGADA',
+  },
+  rotate: {
+    title: 'GIRE O CELULAR',
+    sub: 'o ZONA ZERO joga na horizontal',
   },
   win: {
     title: 'ÁREA DOMINADA!',

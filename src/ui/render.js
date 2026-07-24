@@ -10,6 +10,7 @@ import {
   CELL,
   VAULT_TIME,
   POWERUP_LIFETIME,
+  TOUCH,
 } from '../config.js';
 import { pendingCells } from '../game/walls.js';
 import { ghostAlpha } from '../game/balls.js';
@@ -265,7 +266,50 @@ export function createRenderer(vp) {
     if (game.countdown > 0) drawCountdown(game, theme);
 
     if (!ui.hideHud) drawHud(game, theme, ui);
+    if (ui.touch && ui.touch.show) drawTouchControls(ui.touch, theme);
     // fim de zona / fim de jogo agora são telas DOM (screens.js)
+  }
+
+  // Joystick flutuante + botões H/V (só aparecem em aparelho de toque)
+  function drawTouchControls(touch, theme) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+
+    if (touch.stick) {
+      ctx.strokeStyle = theme.hudText;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(touch.stick.ox, touch.stick.oy, TOUCH.stickRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = theme.player;
+      ctx.beginPath();
+      ctx.arc(
+        touch.stick.ox + touch.stick.dx * TOUCH.stickRadius,
+        touch.stick.oy + touch.stick.dy * TOUCH.stickRadius,
+        22,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+
+    const drawBtn = (btn, label, held) => {
+      ctx.globalAlpha = held ? 0.6 : 0.35;
+      ctx.fillStyle = theme.wall;
+      ctx.beginPath();
+      ctx.arc(btn.x, btn.y, TOUCH.btnDraw, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = held ? 0.95 : 0.7;
+      ctx.fillStyle = '#001018';
+      ctx.font = 'bold 34px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, btn.x, btn.y + 1);
+    };
+    drawBtn(TOUCH.btnH, 'H', touch.hHeld);
+    drawBtn(TOUCH.btnV, 'V', touch.vHeld);
+
+    ctx.restore();
   }
 
   return { draw };

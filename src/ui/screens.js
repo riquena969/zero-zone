@@ -6,24 +6,30 @@ import { STRINGS } from './strings.js';
 
 const THEME_KEYS = Object.keys(THEMES);
 
-export function createPauseMenu(root, { onResume, onRestart, onTheme }) {
+export function createPauseMenu(root, { onResume, onRestart, onTheme, onToggle }) {
+  const S = STRINGS.pause;
   const el = document.createElement('div');
   el.className = 'menu hidden';
   el.innerHTML = `
     <div class="menu-panel">
-      <h2>${STRINGS.pause.title}</h2>
-      <button data-act="resume">${STRINGS.pause.resume}</button>
-      <button data-act="restart">${STRINGS.pause.restart}</button>
+      <h2>${S.title}</h2>
+      <button data-act="resume">${S.resume}</button>
+      <button data-act="restart">${S.restart}</button>
       <button data-act="theme"></button>
+      <button data-act="sound"></button>
+      <button data-act="vibrate"></button>
     </div>
   `;
   root.appendChild(el);
 
-  const themeBtn = el.querySelector('[data-act="theme"]');
+  const btn = (act) => el.querySelector(`[data-act="${act}"]`);
   let themeKey = THEME_KEYS[0];
+  let prefs = { mute: false, vibrate: true };
 
-  function themeLabel() {
-    return `${STRINGS.pause.theme}: ${THEMES[themeKey].label}`;
+  function paint() {
+    btn('theme').textContent = `${S.theme}: ${THEMES[themeKey].label}`;
+    btn('sound').textContent = `${S.sound}: ${prefs.mute ? S.off : S.on}`;
+    btn('vibrate').textContent = `${S.vibrate}: ${prefs.vibrate ? S.on : S.off}`;
   }
 
   el.addEventListener('click', (e) => {
@@ -32,21 +38,49 @@ export function createPauseMenu(root, { onResume, onRestart, onTheme }) {
     else if (act === 'restart') onRestart();
     else if (act === 'theme') {
       themeKey = THEME_KEYS[(THEME_KEYS.indexOf(themeKey) + 1) % THEME_KEYS.length];
-      themeBtn.textContent = themeLabel();
       onTheme(themeKey);
+      paint();
+    } else if (act === 'sound') {
+      prefs.mute = onToggle('mute');
+      paint();
+    } else if (act === 'vibrate') {
+      prefs.vibrate = onToggle('vibrate');
+      paint();
     }
   });
 
   return {
-    show(currentThemeKey) {
+    show(currentThemeKey, currentPrefs) {
       if (currentThemeKey) themeKey = currentThemeKey;
-      themeBtn.textContent = themeLabel();
+      if (currentPrefs) prefs = { mute: currentPrefs.mute, vibrate: currentPrefs.vibrate };
+      paint();
       el.classList.remove('hidden');
     },
     hide() {
       el.classList.add('hidden');
     },
   };
+}
+
+// Overlay "gire o celular" — visibilidade 100% via CSS (portrait + toque)
+export function createRotateOverlay(root) {
+  const el = document.createElement('div');
+  el.className = 'rotate-overlay';
+  el.innerHTML = `<div><h2>${STRINGS.rotate.title}</h2><p>${STRINGS.rotate.sub}</p></div>`;
+  root.appendChild(el);
+}
+
+// Botão de tela cheia (canto superior esquerdo, discreto)
+export function createFullscreenButton(root) {
+  const el = document.createElement('button');
+  el.className = 'fullscreen-btn';
+  el.textContent = '⛶';
+  el.title = 'Tela cheia';
+  root.appendChild(el);
+  el.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
 }
 
 export function createLevelClearMenu(root, { onNext }) {

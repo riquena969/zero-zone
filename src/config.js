@@ -29,6 +29,16 @@ export const SPAWN_MARGIN = 48; // px das bordas da arena para spawn de bolas
 export const SPAWN_MIN_PLAYER_DIST = 220; // px mínimos entre bola e jogador no spawn
 export const SPAWN_MIN_BALL_DIST = 60; // px mínimos entre bolas no spawn
 
+// ---------- Controles de toque (coordenadas lógicas) ----------
+export const TOUCH = {
+  stickRadius: 60, // alcance do joystick flutuante
+  deadZone: 0.15,
+  btnH: { x: 1178, y: 468 }, // H acima, V embaixo (polegar direito direto no V)
+  btnV: { x: 1178, y: 628 },
+  btnHit: 85, // raio de toque generoso
+  btnDraw: 54, // raio visual
+};
+
 // ---------- Power-ups ----------
 export const POWERUP_UNLOCK = { relogio: 3, escudo: 5, turbo: 7 }; // zona em que entram
 export const POWERUP_INTERVAL = 20; // s entre spawns

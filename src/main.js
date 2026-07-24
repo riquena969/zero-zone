@@ -6,7 +6,8 @@ import { LOGICAL_W, LOGICAL_H, GRID_W, GRID_H, THEMES, DEFAULT_THEME, LIVES_MAX 
 import { createLoop } from './core/loop.js';
 import { createStateMachine } from './core/statemachine.js';
 import { createViewport } from './ui/viewport.js';
-import { createKeyboardInput } from './ui/input.js';
+import { createKeyboardInput, combineInputs } from './ui/input.js';
+import { createTouchInput } from './ui/touch.js';
 import { createRenderer, PAUSE_RECT } from './ui/render.js';
 import {
   createPauseMenu,
@@ -18,6 +19,8 @@ import {
   createHintToast,
   createInitialsScreen,
   createLeaderboardScreen,
+  createRotateOverlay,
+  createFullscreenButton,
 } from './ui/screens.js';
 import { createGame } from './game/game.js';
 import { levelSpec } from './game/levels.js';
@@ -28,7 +31,8 @@ import { STRINGS } from './ui/strings.js';
 const canvas = document.getElementById('game');
 const overlayRoot = document.getElementById('overlay-root');
 const vp = createViewport(canvas, { logicalW: LOGICAL_W, logicalH: LOGICAL_H });
-const input = createKeyboardInput(window);
+const touchInput = createTouchInput(canvas, vp);
+const input = combineInputs(createKeyboardInput(window), touchInput);
 const renderer = createRenderer(vp);
 
 const storage = createStorage();
@@ -97,6 +101,11 @@ const pauseMenu = createPauseMenu(overlayRoot, {
     theme = THEMES[key];
     storage.setPref('theme', key);
   },
+  onToggle: (key) => {
+    prefs[key] = !prefs[key];
+    storage.setPref(key, prefs[key]);
+    return prefs[key];
+  },
 });
 const levelClearMenu = createLevelClearMenu(overlayRoot, {
   onNext: () => {
@@ -110,6 +119,8 @@ const gameOverScreen = createGameOverScreen(overlayRoot, {
 });
 const tutorialBar = createTutorialBar(overlayRoot);
 const hintToast = createHintToast(overlayRoot);
+createRotateOverlay(overlayRoot);
+createFullscreenButton(overlayRoot);
 
 const initialsScreen = createInitialsScreen(overlayRoot, {
   onSubmit: (name) => {
@@ -196,8 +207,9 @@ const machine = createStateMachine({
           scoring.onWallComplete();
         } else if (e.type === 'shatter') {
           scoring.onShatter();
-        } else if (e.type === 'lifeLost' && e.cause === 'ball') {
-          scoring.onDeath();
+        } else if (e.type === 'lifeLost') {
+          if (e.cause === 'ball') scoring.onDeath();
+          if (prefs.vibrate && navigator.vibrate) navigator.vibrate(80);
         } else if (e.type === 'fill') {
           scoring.onFill(e.cells / (GRID_W * GRID_H), zone);
         } else if (e.type === 'win') {
@@ -216,12 +228,12 @@ const machine = createStateMachine({
       }
     },
     render() {
-      renderer.draw(game, theme, { zone, score: scoring.score, hi });
+      renderer.draw(game, theme, { zone, score: scoring.score, hi, touch: touchInput.visual() });
     },
   },
 
   paused: {
-    enter: () => pauseMenu.show(themeKey),
+    enter: () => pauseMenu.show(themeKey, prefs),
     exit: () => pauseMenu.hide(),
     update(dt, snap) {
       if (snap.pauseJust) machine.goto('playing');
@@ -307,6 +319,12 @@ window.addEventListener('blur', () => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && machine.name === 'playing') machine.goto('paused');
+});
+
+// Girou para retrato no meio da partida → pausa (o overlay de rotação cobre)
+const portraitQuery = matchMedia('(orientation: portrait)');
+portraitQuery.addEventListener('change', () => {
+  if (portraitQuery.matches && machine.name === 'playing') machine.goto('paused');
 });
 
 // Botão de pausa da HUD (hit test em coordenadas lógicas)

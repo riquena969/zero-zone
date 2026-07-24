@@ -5,6 +5,25 @@
 
 const PREVENT = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
 
+// Funde produtores (teclado + toque): números somam (clampados), booleanos OR.
+export function combineInputs(...producers) {
+  return {
+    sample() {
+      const out = {};
+      for (const p of producers) {
+        const s = p.sample();
+        for (const k in s) {
+          if (typeof s[k] === 'number') out[k] = (out[k] ?? 0) + s[k];
+          else out[k] = out[k] || s[k];
+        }
+      }
+      out.moveX = Math.max(-1, Math.min(1, out.moveX ?? 0));
+      out.moveY = Math.max(-1, Math.min(1, out.moveY ?? 0));
+      return out;
+    },
+  };
+}
+
 export function createKeyboardInput(target = window) {
   const held = new Set();
   const tapped = new Set();
