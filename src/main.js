@@ -1,16 +1,26 @@
 // ZONA ZERO — raiz de composição.
 // Única ponte entre o jogo puro (src/game/) e o mundo (DOM, canvas, áudio).
-// Orquestra a RUN: zona → zona, vidas carregadas (+1 por zona, teto), R = nova run.
+// Máquina de estados: title(attract) ↔ howto, playing ↔ paused, levelclear, gameover.
 
 import { LOGICAL_W, LOGICAL_H, GRID_W, GRID_H, THEMES, DEFAULT_THEME, LIVES_MAX } from './config.js';
 import { createLoop } from './core/loop.js';
+import { createStateMachine } from './core/statemachine.js';
 import { createViewport } from './ui/viewport.js';
 import { createKeyboardInput } from './ui/input.js';
 import { createRenderer, PAUSE_RECT } from './ui/render.js';
-import { createPauseMenu, createLevelClearMenu, createTutorialBar } from './ui/screens.js';
+import {
+  createPauseMenu,
+  createLevelClearMenu,
+  createTutorialBar,
+  createTitleScreen,
+  createHowtoScreen,
+  createGameOverScreen,
+  createHintToast,
+} from './ui/screens.js';
 import { createGame } from './game/game.js';
 import { levelSpec } from './game/levels.js';
 import { createScoring } from './game/scoring.js';
+import { STRINGS } from './ui/strings.js';
 
 const canvas = document.getElementById('game');
 const overlayRoot = document.getElementById('overlay-root');
@@ -27,14 +37,12 @@ let seed = newSeed();
 let zone = 1;
 let game = null;
 let scoring = createScoring();
-let paused = false;
-let levelClearShown = false;
+let vaultHintShown = false;
 
 function startZone(z, lives) {
   zone = z;
   game = createGame({ level: levelSpec(z, seed), lives });
   scoring.setZone(z);
-  levelClearShown = false;
   if (z === 1) tutorialBar.show();
   else tutorialBar.hide();
 }
@@ -45,43 +53,193 @@ function newRun() {
   startZone(1, undefined);
 }
 
-// ---------- Telas ----------
+// Arena viva ao fundo do título: só bolinhas quicando, sem orbe.
+function makeAttract() {
+  const g = createGame({
+    level: {
+      targetPct: 1,
+      seed: newSeed(),
+      balls: [
+        { type: 'normal', x: 300, y: 250, dirX: 1, dirY: 1 },
+        { type: 'veloz', x: 900, y: 500, dirX: -1, dirY: 1 },
+        { type: 'gigante', x: 640, y: 300, dirX: 1, dirY: -1 },
+        { type: 'fantasma', x: 1000, y: 200, dirX: -1, dirY: -1 },
+        { type: 'normal', x: 200, y: 550, dirX: 1, dirY: -1 },
+      ],
+    },
+  });
+  g.player.iframes = Number.MAX_SAFE_INTEGER; // nunca morre (e nem aparece)
+  return g;
+}
+
+// ---------- Telas DOM ----------
+const titleScreen = createTitleScreen(overlayRoot, {
+  onPlay: () => machine.goto('playing', { fresh: true }),
+  onHowto: () => machine.goto('howto'),
+});
+const howtoScreen = createHowtoScreen(overlayRoot, { onBack: () => machine.goto('title') });
 const pauseMenu = createPauseMenu(overlayRoot, {
-  onResume: () => setPaused(false),
+  onResume: () => machine.goto('playing'),
   onRestart: () => {
     startZone(zone, game.lives);
-    setPaused(false);
+    machine.goto('playing');
   },
   onTheme: (key) => {
     themeKey = key;
     theme = THEMES[key];
   },
 });
-
 const levelClearMenu = createLevelClearMenu(overlayRoot, {
   onNext: () => {
-    levelClearMenu.hide();
     startZone(zone + 1, Math.min(LIVES_MAX, game.lives + 1));
+    machine.goto('playing');
+  },
+});
+const gameOverScreen = createGameOverScreen(overlayRoot, {
+  onRetry: () => machine.goto('playing', { fresh: true }),
+  onMenu: () => machine.goto('title'),
+});
+const tutorialBar = createTutorialBar(overlayRoot);
+const hintToast = createHintToast(overlayRoot);
+
+// ---------- Estados ----------
+let attract = null;
+
+const machine = createStateMachine({
+  title: {
+    enter() {
+      attract = makeAttract();
+      titleScreen.show();
+      tutorialBar.hide();
+    },
+    exit: () => titleScreen.hide(),
+    update(dt, snap) {
+      attract.update({}, dt);
+      if (snap.confirmJust) machine.goto('playing', { fresh: true });
+    },
+    render() {
+      renderer.draw(attract, theme, { zone: 0, score: 0, hi: 0, hidePlayer: true, hideHud: true });
+    },
+  },
+
+  howto: {
+    enter: () => howtoScreen.show(),
+    exit: () => howtoScreen.hide(),
+    update(dt, snap) {
+      attract.update({}, dt);
+      if (snap.confirmJust || snap.pauseJust) machine.goto('title');
+    },
+    render() {
+      renderer.draw(attract, theme, { zone: 0, score: 0, hi: 0, hidePlayer: true, hideHud: true });
+    },
+  },
+
+  playing: {
+    enter(params) {
+      if (params && params.fresh) newRun();
+    },
+    update(dt, snap) {
+      if (snap.pauseJust) {
+        machine.goto('paused');
+        return;
+      }
+      if (snap.restartJust) {
+        newRun();
+        return;
+      }
+
+      const events = game.update(snap, dt);
+      for (const e of events) {
+        if (e.type === 'complete') {
+          scoring.onWallComplete();
+        } else if (e.type === 'shatter') {
+          scoring.onShatter();
+        } else if (e.type === 'lifeLost' && e.cause === 'ball') {
+          scoring.onDeath();
+        } else if (e.type === 'fill') {
+          scoring.onFill(e.cells / (GRID_W * GRID_H), zone);
+        } else if (e.type === 'win') {
+          machine.goto('levelclear');
+        } else if (e.type === 'gameover') {
+          machine.goto('gameover');
+        }
+        // demais eventos → áudio/fx nas fatias 12/13
+      }
+
+      // dica contextual do vault (one-shot por sessão)
+      if (!vaultHintShown && game.player.vault) {
+        vaultHintShown = true;
+        hintToast.show(STRINGS.hints.vault);
+      }
+    },
+    render() {
+      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+    },
+  },
+
+  paused: {
+    enter: () => pauseMenu.show(themeKey),
+    exit: () => pauseMenu.hide(),
+    update(dt, snap) {
+      if (snap.pauseJust) machine.goto('playing');
+    },
+    render() {
+      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+    },
+  },
+
+  levelclear: {
+    enter() {
+      this.animT = 0;
+      this.menuShown = false;
+    },
+    exit: () => levelClearMenu.hide(),
+    update(dt, snap) {
+      this.animT += dt;
+      if (!this.menuShown && this.animT >= 1.5) {
+        this.menuShown = true;
+        const bonus = scoring.zoneBonus({
+          lives: game.lives,
+          covered: game.grid.coveredFraction(),
+          target: game.targetPct,
+          timeLeft: game.timeLeft,
+        });
+        levelClearMenu.show(zone, game.grid.coveredFraction(), bonus);
+      }
+      if (this.menuShown && snap.confirmJust) {
+        startZone(zone + 1, Math.min(LIVES_MAX, game.lives + 1));
+        machine.goto('playing');
+      }
+    },
+    render() {
+      const scale = Math.max(0, 1 - this.animT / 1.5);
+      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0, ballScale: scale });
+    },
+  },
+
+  gameover: {
+    enter: () => gameOverScreen.show(scoring.score, scoring.stats),
+    exit: () => gameOverScreen.hide(),
+    update(dt, snap) {
+      if (snap.confirmJust || snap.restartJust) machine.goto('playing', { fresh: true });
+    },
+    render() {
+      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+    },
   },
 });
 
-const tutorialBar = createTutorialBar(overlayRoot);
-
-function setPaused(v) {
-  if (paused === v) return;
-  paused = v;
-  if (v) pauseMenu.show(themeKey);
-  else pauseMenu.hide();
-}
-
 // Auto-pausa ao perder o foco — e NUNCA retoma sozinho.
-window.addEventListener('blur', () => setPaused(true));
+window.addEventListener('blur', () => {
+  if (machine.name === 'playing') machine.goto('paused');
+});
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) setPaused(true);
+  if (document.hidden && machine.name === 'playing') machine.goto('paused');
 });
 
 // Botão de pausa da HUD (hit test em coordenadas lógicas)
 canvas.addEventListener('click', (e) => {
+  if (machine.name !== 'playing') return;
   const { x, y } = vp.toLogical(e.clientX, e.clientY);
   if (
     x >= PAUSE_RECT.x &&
@@ -89,52 +247,13 @@ canvas.addEventListener('click', (e) => {
     y >= PAUSE_RECT.y &&
     y <= PAUSE_RECT.y + PAUSE_RECT.h
   ) {
-    setPaused(true);
+    machine.goto('paused');
   }
 });
 
 // ---------- Loop ----------
-function update(dt) {
-  const snap = input.sample();
-  if (snap.pauseJust) {
-    setPaused(!paused);
-    return;
-  }
-  if (paused) return;
-  if (snap.restartJust) {
-    levelClearMenu.hide();
-    newRun();
-    return;
-  }
-
-  const events = game.update(snap, dt);
-
-  for (const e of events) {
-    if (e.type === 'complete') {
-      scoring.onWallComplete();
-    } else if (e.type === 'shatter') {
-      scoring.onShatter();
-    } else if (e.type === 'lifeLost' && e.cause === 'ball') {
-      scoring.onDeath();
-    } else if (e.type === 'fill') {
-      scoring.onFill(e.cells / (GRID_W * GRID_H), zone);
-    } else if (e.type === 'win' && !levelClearShown) {
-      levelClearShown = true;
-      const bonus = scoring.zoneBonus({
-        lives: game.lives,
-        covered: game.grid.coveredFraction(),
-        target: game.targetPct,
-        timeLeft: game.timeLeft,
-      });
-      levelClearMenu.show(zone, game.grid.coveredFraction(), bonus);
-    }
-    // demais eventos → áudio/fx nas fatias 12/13
-  }
-}
-
-function render() {
-  renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
-}
-
-newRun();
-createLoop({ update, render }).start();
+machine.goto('title');
+createLoop({
+  update: (dt) => machine.update(dt, input.sample()),
+  render: () => machine.render(),
+}).start();

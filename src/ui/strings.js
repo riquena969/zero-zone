@@ -33,7 +33,39 @@ export const STRINGS = {
     next: 'PRÓXIMA ZONA',
   },
   tutorial: 'SETAS/WASD mover · H parede horizontal · V parede vertical · segure contra uma parede para escalar',
-  dev: {
-    slice: 'fatia 1 — jogo mínimo',
+  title: {
+    subtitle: 'cerque as bolinhas. não encoste nelas.',
+    play: 'JOGAR',
+    howto: 'COMO JOGAR',
+    hint: 'ENTER para jogar',
+  },
+  howto: {
+    title: 'COMO JOGAR',
+    lines: [
+      'Mova o orbe com as SETAS ou WASD.',
+      'H dispara uma parede horizontal; V, uma vertical — a partir de você.',
+      'Quando a parede completa, toda área sem bolinha vira território seu.',
+      'Bolinha bateu na parede em construção? Ela quebra e custa 1 vida.',
+      'A metade que já ancorou FICA — use os tocos a seu favor.',
+      'Encostou numa bolinha, perdeu vida. Prenda-as em jaulas pequenas!',
+      'Preso? Segure contra uma parede pronta para escalá-la.',
+      'Conquiste a meta da zona. Fills grandes e sequências valem mais.',
+      'Power-ups surgem perto do perigo: relógio, escudo e turbo.',
+    ],
+    back: 'VOLTAR',
+  },
+  gameoverScreen: {
+    title: 'FIM DE JOGO',
+    score: 'PONTUAÇÃO',
+    zone: 'zona alcançada',
+    walls: 'paredes construídas',
+    shattered: 'paredes perdidas',
+    maxCombo: 'maior combo',
+    biggestFill: 'maior conquista',
+    retry: 'JOGAR DE NOVO',
+    menu: 'MENU',
+  },
+  hints: {
+    vault: 'continue segurando contra a parede para escalar!',
   },
 };

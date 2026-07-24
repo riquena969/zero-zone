@@ -42,6 +42,7 @@ export function createKeyboardInput(target = window) {
         restartJust: tapped.has('KeyR'),
         pauseJust: tapped.has('Escape') || tapped.has('KeyP'),
         muteJust: tapped.has('KeyM'),
+        confirmJust: tapped.has('Enter') || tapped.has('Space'),
       };
       tapped.clear();
       return s;

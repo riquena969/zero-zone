@@ -118,3 +118,115 @@ body {
 .tutorial-bar.hidden {
   display: none;
 }
+
+/* ---------- Título ---------- */
+.title-screen {
+  background: rgba(0, 0, 0, 0.35); /* deixa a arena viva aparecer atrás */
+}
+
+.title-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.title-box h1 {
+  color: #eafcff;
+  font-size: clamp(48px, 9vw, 96px);
+  letter-spacing: 0.18em;
+  text-shadow:
+    0 0 18px rgba(0, 229, 255, 0.8),
+    0 0 60px rgba(0, 229, 255, 0.4);
+}
+
+.title-box .subtitle {
+  color: rgba(191, 239, 255, 0.85);
+  font-size: 16px;
+  letter-spacing: 3px;
+  margin-bottom: 14px;
+}
+
+.title-box button {
+  font-family: inherit;
+  font-size: 19px;
+  letter-spacing: 3px;
+  padding: 14px 28px;
+  min-width: 300px;
+  color: #bfefff;
+  background: rgba(5, 10, 18, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.title-box button:hover {
+  background: rgba(0, 229, 255, 0.14);
+  color: #fff;
+}
+
+.title-box .key-hint {
+  color: rgba(191, 239, 255, 0.5);
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+/* ---------- Como jogar / Game over ---------- */
+.howto-panel {
+  max-width: 640px;
+  text-align: left;
+}
+
+.howto-panel ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.howto-panel li {
+  color: #bfefff;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.howto-panel li::before {
+  content: '▸ ';
+  color: rgba(0, 229, 255, 0.8);
+}
+
+.menu-panel h2.danger {
+  color: #ff5f7a;
+  text-shadow: 0 0 16px rgba(255, 56, 96, 0.6);
+}
+
+.final-score {
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #eafcff !important;
+}
+
+.stats-table {
+  margin: 0 auto 8px;
+  border-collapse: collapse;
+  color: #bfefff;
+  font-size: 15px;
+}
+
+.stats-table td {
+  padding: 3px 14px;
+  text-align: left;
+}
+
+.stats-table td:last-child {
+  text-align: right;
+  color: #eafcff;
+}
+
+.hint-toast {
+  bottom: 12%;
+  border-color: rgba(102, 255, 194, 0.5);
+  color: rgba(102, 255, 194, 0.95);
+}

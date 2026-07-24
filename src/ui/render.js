@@ -125,18 +125,6 @@ export function createRenderer(vp) {
     ctx.fillText(String(Math.ceil(game.countdown)), LOGICAL_W / 2, (HUD_H + LOGICAL_H) / 2);
   }
 
-  function drawOverlay(theme, titleColor, title, hint) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(0, HUD_H, LOGICAL_W, LOGICAL_H - HUD_H);
-    ctx.fillStyle = titleColor;
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 56px "Courier New", monospace';
-    ctx.fillText(title, LOGICAL_W / 2, LOGICAL_H / 2 - 20);
-    ctx.fillStyle = theme.hudText;
-    ctx.font = '22px "Courier New", monospace';
-    ctx.fillText(hint, LOGICAL_W / 2, LOGICAL_H / 2 + 32);
-  }
-
   function draw(game, theme, ui = { zone: 1, score: 0, hi: 0 }) {
     vp.checkResize();
     vp.clearAll('#000');
@@ -161,7 +149,11 @@ export function createRenderer(vp) {
     }
 
     // bolinhas (cada tipo tem forma/comportamento próprio, não só cor)
+    // ui.ballScale < 1 = implosão da celebração de fim de zona
+    const ballScale = ui.ballScale ?? 1;
     for (const b of game.balls) {
+      if (ballScale <= 0) break;
+      const br = b.r * ballScale;
       const cor = theme.balls[b.type];
 
       if (b.type === 'fantasma') {
@@ -169,13 +161,13 @@ export function createRenderer(vp) {
         ctx.globalAlpha = ghostAlpha(b);
         ctx.fillStyle = cor;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, br, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 0.45;
         ctx.strokeStyle = cor;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, br, 0, Math.PI * 2);
         ctx.stroke();
         ctx.globalAlpha = 1;
         continue;
@@ -183,20 +175,20 @@ export function createRenderer(vp) {
 
       ctx.fillStyle = cor;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, br, 0, Math.PI * 2);
       ctx.fill();
 
       if (b.homing) {
         // "olho" no nariz — mostra para onde ela está virando (e mete medo)
-        const ex = b.x + Math.cos(b.heading) * b.r * 0.55;
-        const ey = b.y + Math.sin(b.heading) * b.r * 0.55;
+        const ex = b.x + Math.cos(b.heading) * br * 0.55;
+        const ey = b.y + Math.sin(b.heading) * br * 0.55;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(ex, ey, b.r * 0.32, 0, Math.PI * 2);
+        ctx.arc(ex, ey, br * 0.32, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#111';
         ctx.beginPath();
-        ctx.arc(ex + Math.cos(b.heading) * 1.5, ey + Math.sin(b.heading) * 1.5, b.r * 0.15, 0, Math.PI * 2);
+        ctx.arc(ex + Math.cos(b.heading) * 1.5, ey + Math.sin(b.heading) * 1.5, br * 0.15, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -236,9 +228,9 @@ export function createRenderer(vp) {
       }
     }
 
-    // orbe do jogador (pisca a 4Hz durante i-frames)
+    // orbe do jogador (pisca a 4Hz durante i-frames; oculto no attract mode)
     const p = game.player;
-    const piscando = p.iframes > 0 && Math.floor(p.iframes * 8) % 2 === 0;
+    const piscando = ui.hidePlayer || (p.iframes > 0 && Math.floor(p.iframes * 8) % 2 === 0);
     if (!piscando) {
       ctx.fillStyle = theme.player;
       ctx.beginPath();
@@ -272,12 +264,8 @@ export function createRenderer(vp) {
 
     if (game.countdown > 0) drawCountdown(game, theme);
 
-    drawHud(game, theme, ui);
-    if (game.status === 'won') {
-      drawOverlay(theme, theme.player, STRINGS.win.title, STRINGS.win.restart);
-    } else if (game.status === 'gameover') {
-      drawOverlay(theme, theme.danger, STRINGS.gameover.title, STRINGS.gameover.restart);
-    }
+    if (!ui.hideHud) drawHud(game, theme, ui);
+    // fim de zona / fim de jogo agora são telas DOM (screens.js)
   }
 
   return { draw };
