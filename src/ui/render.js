@@ -5,6 +5,9 @@ import { WALL, CLAIMED, LOGICAL_W, LOGICAL_H, HUD_H, CELL, VAULT_TIME } from '..
 import { pendingCells } from '../game/walls.js';
 import { STRINGS } from './strings.js';
 
+// Botão de pausa na HUD (hit test compartilhado com o main via este export)
+export const PAUSE_RECT = { x: LOGICAL_W - 46, y: 10, w: 36, h: 36 };
+
 export function createRenderer(vp) {
   const ctx = vp.ctx;
 
@@ -31,7 +34,7 @@ export function createRenderer(vp) {
     ctx.stroke();
   }
 
-  function drawHud(game, theme) {
+  function drawHud(game, theme, ui) {
     ctx.strokeStyle = theme.claimedEdge;
     ctx.beginPath();
     ctx.moveTo(0, HUD_H - 0.5);
@@ -52,12 +55,25 @@ export function createRenderer(vp) {
       ctx.fill();
     }
 
-    const pct = Math.floor(game.grid.coveredFraction() * 100);
-    const alvo = Math.round(game.targetPct * 100);
     ctx.fillStyle = theme.hudText;
     ctx.font = '18px "Courier New", monospace';
+
+    // zona e placar
+    ctx.textAlign = 'left';
+    ctx.fillText(`${STRINGS.hud.zone} ${ui.zone}`, 330, HUD_H / 2);
+    ctx.fillText(`${STRINGS.hud.score} ${ui.score}`, 470, HUD_H / 2);
+    ctx.fillText(`${STRINGS.hud.hi} ${ui.hi}`, 700, HUD_H / 2);
+
+    // progresso
+    const pct = Math.floor(game.grid.coveredFraction() * 100);
+    const alvo = Math.round(game.targetPct * 100);
     ctx.textAlign = 'right';
-    ctx.fillText(`${STRINGS.hud.conquered}: ${pct}% / ${alvo}%`, LOGICAL_W - 16, HUD_H / 2);
+    ctx.fillText(`${STRINGS.hud.conquered}: ${pct}% / ${alvo}%`, PAUSE_RECT.x - 16, HUD_H / 2);
+
+    // botão de pausa (duas barras)
+    ctx.fillStyle = theme.hudText;
+    ctx.fillRect(PAUSE_RECT.x + 8, PAUSE_RECT.y + 8, 7, 20);
+    ctx.fillRect(PAUSE_RECT.x + 21, PAUSE_RECT.y + 8, 7, 20);
   }
 
   function drawOverlay(theme, titleColor, title, hint) {
@@ -72,7 +88,7 @@ export function createRenderer(vp) {
     ctx.fillText(hint, LOGICAL_W / 2, LOGICAL_H / 2 + 32);
   }
 
-  function draw(game, theme) {
+  function draw(game, theme, ui = { zone: 1, score: 0, hi: 0 }) {
     vp.checkResize();
     vp.clearAll('#000');
     vp.applyTransform();
@@ -128,7 +144,7 @@ export function createRenderer(vp) {
       ctx.stroke();
     }
 
-    drawHud(game, theme);
+    drawHud(game, theme, ui);
     if (game.status === 'won') {
       drawOverlay(theme, theme.player, STRINGS.win.title, STRINGS.win.restart);
     } else if (game.status === 'gameover') {

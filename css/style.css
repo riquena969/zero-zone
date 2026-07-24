@@ -40,3 +40,54 @@ body {
 #overlay-root > * {
   pointer-events: auto;
 }
+
+/* ---------- Menus ---------- */
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.menu.hidden {
+  display: none;
+}
+
+.menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 40px;
+  background: rgba(5, 10, 18, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.55);
+  border-radius: 8px;
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.25);
+  text-align: center;
+}
+
+.menu-panel h2 {
+  color: #eafcff;
+  font-size: 28px;
+  letter-spacing: 6px;
+  margin-bottom: 8px;
+}
+
+.menu-panel button {
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: 2px;
+  padding: 12px 24px;
+  min-width: 260px;
+  color: #bfefff;
+  background: transparent;
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.menu-panel button:hover {
+  background: rgba(0, 229, 255, 0.12);
+  color: #ffffff;
+}

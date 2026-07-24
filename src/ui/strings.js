@@ -5,6 +5,15 @@ export const STRINGS = {
   gameName: 'ZONA ZERO',
   hud: {
     conquered: 'CONQUISTADO',
+    zone: 'ZONA',
+    score: 'SCORE',
+    hi: 'HI',
+  },
+  pause: {
+    title: 'PAUSA',
+    resume: 'CONTINUAR',
+    restart: 'REINICIAR ZONA',
+    theme: 'TEMA',
   },
   win: {
     title: 'ÁREA DOMINADA!',
