@@ -1,0 +1,42 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: 'Courier New', ui-monospace, monospace;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Overlays DOM (menus, placar, iniciais) ficam por cima do canvas */
+#overlay-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#overlay-root > * {
+  pointer-events: auto;
+}

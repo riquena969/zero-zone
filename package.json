@@ -1,0 +1,11 @@
+{
+  "name": "zona-zero",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ZONA ZERO — jogo de arena neon: cerque as bolinhas sem ser tocado",
+  "scripts": {
+    "test": "node --test test/",
+    "serve": "python3 -m http.server 8080"
+  }
+}
