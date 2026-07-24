@@ -27,6 +27,7 @@ import { levelSpec } from './game/levels.js';
 import { createScoring } from './game/scoring.js';
 import { createStorage } from './services/storage.js';
 import { createAudio } from './ui/audio.js';
+import { createFx } from './ui/fx.js';
 import { STRINGS } from './ui/strings.js';
 
 const canvas = document.getElementById('game');
@@ -34,7 +35,13 @@ const overlayRoot = document.getElementById('overlay-root');
 const vp = createViewport(canvas, { logicalW: LOGICAL_W, logicalH: LOGICAL_H });
 const touchInput = createTouchInput(canvas, vp);
 const input = combineInputs(createKeyboardInput(window), touchInput);
-const renderer = createRenderer(vp);
+const fx = createFx();
+const renderer = createRenderer(vp, fx);
+
+const cellCenter = (c) => {
+  const r = game.grid.cellRect(c.cx, c.cy);
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+};
 
 const storage = createStorage();
 const prefs = storage.getPrefs();
@@ -223,6 +230,7 @@ const machine = createStateMachine({
       if (params && params.fresh) newRun();
     },
     update(dt, snap) {
+      if (fx.tick(dt)) return; // micro hit-stop: mundo congelado por ~80ms
       if (snap.pauseJust) {
         machine.goto('paused');
         return;
@@ -237,19 +245,44 @@ const machine = createStateMachine({
         if (EVENT_SFX[e.type]) audio.play(EVENT_SFX[e.type]);
         if (e.type === 'complete') {
           scoring.onWallComplete();
+          // faíscas ao longo da parede recém-completada
+          for (let i = 0; i < e.cells.length; i += 4) {
+            const pt = cellCenter(e.cells[i]);
+            fx.burst(pt.x, pt.y, theme.wall, { count: 3, speed: 90, life: 0.4, size: 2.5 });
+          }
         } else if (e.type === 'shatter') {
           scoring.onShatter();
+          fx.addShake(8);
+          fx.addHitStop(0.08); // quebra à distância precisa ser legível
+          for (let i = 0; i < e.cells.length; i += 2) {
+            const pt = cellCenter(e.cells[i]);
+            fx.burst(pt.x, pt.y, theme.wallGrow, { count: 5, speed: 200, life: 0.5 });
+          }
         } else if (e.type === 'lifeLost') {
           if (e.cause === 'ball') scoring.onDeath();
           if (prefs.vibrate && navigator.vibrate) navigator.vibrate(80);
+          fx.addShake(10);
+          fx.burst(game.player.x, game.player.y, theme.danger, { count: 26, speed: 260, life: 0.7 });
         } else if (e.type === 'fill') {
           scoring.onFill(e.cells / (GRID_W * GRID_H), zone);
+          fx.addShake(3);
+          fx.flash(theme.claimedEdge, 0.18);
+        } else if (e.type === 'powerup') {
+          fx.burst(game.player.x, game.player.y, theme.powerup, { count: 16, speed: 180, life: 0.5 });
+        } else if (e.type === 'shieldBreak') {
+          fx.burst(game.player.x, game.player.y, theme.powerup, { count: 20, speed: 240, life: 0.6 });
+        } else if (e.type === 'vault') {
+          fx.burst(game.player.x, game.player.y, theme.playerGlow, { count: 8, speed: 120, life: 0.35 });
         } else if (e.type === 'win') {
+          // implosão: cada bola presa vira um festival de partículas
+          for (const b of game.balls) {
+            fx.burst(b.x, b.y, theme.balls[b.type], { count: 22, speed: 200, life: 0.9 });
+          }
+          fx.addShake(5);
           machine.goto('levelclear');
         } else if (e.type === 'gameover') {
           machine.goto(storage.qualifies(scoring.score) ? 'initials' : 'gameover');
         }
-        // demais eventos → áudio/fx nas fatias 12/13
       }
 
       // música reage ao jogo: intensidade = progresso rumo ao alvo
@@ -267,7 +300,14 @@ const machine = createStateMachine({
       }
     },
     render() {
-      renderer.draw(game, theme, { zone, score: scoring.score, hi, touch: touchInput.visual() });
+      renderer.draw(game, theme, {
+        zone,
+        score: scoring.score,
+        hi,
+        touch: touchInput.visual(),
+        allowShake: prefs.shake,
+        allowFlash: prefs.flash,
+      });
     },
   },
 
@@ -289,6 +329,7 @@ const machine = createStateMachine({
     },
     exit: () => levelClearMenu.hide(),
     update(dt, snap) {
+      fx.tick(dt); // partículas da implosão continuam vivas na celebração
       this.animT += dt;
       if (!this.menuShown && this.animT >= 1.5) {
         this.menuShown = true;
@@ -307,7 +348,14 @@ const machine = createStateMachine({
     },
     render() {
       const scale = Math.max(0, 1 - this.animT / 1.5);
-      renderer.draw(game, theme, { zone, score: scoring.score, hi, ballScale: scale });
+      renderer.draw(game, theme, {
+        zone,
+        score: scoring.score,
+        hi,
+        ballScale: scale,
+        allowShake: prefs.shake,
+        allowFlash: prefs.flash,
+      });
     },
   },
 

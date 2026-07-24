@@ -79,8 +79,9 @@ export function stepWall(wall, grid, balls, dt, tipSpeed) {
   for (const ball of balls) {
     for (const c of pendingCells(wall)) {
       if (ballTouchesCell(ball, grid.cellRect(c.cx, c.cy))) {
+        const cells = pendingCells(wall); // captura antes de encerrar (para o fx)
         wall.done = true;
-        events.push({ type: 'shatter' });
+        events.push({ type: 'shatter', cells });
         return { events, shattered: true, completed: false };
       }
     }
@@ -98,7 +99,10 @@ export function stepWall(wall, grid, balls, dt, tipSpeed) {
   // 4) Completude: as duas ancoradas → o jogo roda flood fill e claima.
   if (wall.neg.anchored && wall.pos.anchored) {
     wall.done = true;
-    events.push({ type: 'complete' });
+    events.push({
+      type: 'complete',
+      cells: [{ cx: wall.originCx, cy: wall.originCy }, ...wall.neg.cells, ...wall.pos.cells],
+    });
     return { events, shattered: false, completed: true };
   }
   return { events, shattered: false, completed: false };

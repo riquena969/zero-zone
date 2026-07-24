@@ -16,6 +16,8 @@ export const STRINGS = {
     theme: 'TEMA',
     vibrate: 'VIBRAÇÃO',
     sound: 'SOM',
+    shake: 'TREMIDA DE TELA',
+    flash: 'FLASH',
     on: 'LIGADA',
     off: 'DESLIGADA',
   },

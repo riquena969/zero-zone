@@ -18,18 +18,22 @@ export function createPauseMenu(root, { onResume, onRestart, onTheme, onToggle }
       <button data-act="theme"></button>
       <button data-act="sound"></button>
       <button data-act="vibrate"></button>
+      <button data-act="shake"></button>
+      <button data-act="flash"></button>
     </div>
   `;
   root.appendChild(el);
 
   const btn = (act) => el.querySelector(`[data-act="${act}"]`);
   let themeKey = THEME_KEYS[0];
-  let prefs = { mute: false, vibrate: true };
+  let prefs = { mute: false, vibrate: true, shake: true, flash: true };
 
   function paint() {
     btn('theme').textContent = `${S.theme}: ${THEMES[themeKey].label}`;
     btn('sound').textContent = `${S.sound}: ${prefs.mute ? S.off : S.on}`;
     btn('vibrate').textContent = `${S.vibrate}: ${prefs.vibrate ? S.on : S.off}`;
+    btn('shake').textContent = `${S.shake}: ${prefs.shake ? S.on : S.off}`;
+    btn('flash').textContent = `${S.flash}: ${prefs.flash ? S.on : S.off}`;
   }
 
   el.addEventListener('click', (e) => {
@@ -43,8 +47,8 @@ export function createPauseMenu(root, { onResume, onRestart, onTheme, onToggle }
     } else if (act === 'sound') {
       prefs.mute = onToggle('mute');
       paint();
-    } else if (act === 'vibrate') {
-      prefs.vibrate = onToggle('vibrate');
+    } else if (act === 'vibrate' || act === 'shake' || act === 'flash') {
+      prefs[act === 'vibrate' ? 'vibrate' : act] = onToggle(act === 'vibrate' ? 'vibrate' : act);
       paint();
     }
   });
@@ -52,7 +56,14 @@ export function createPauseMenu(root, { onResume, onRestart, onTheme, onToggle }
   return {
     show(currentThemeKey, currentPrefs) {
       if (currentThemeKey) themeKey = currentThemeKey;
-      if (currentPrefs) prefs = { mute: currentPrefs.mute, vibrate: currentPrefs.vibrate };
+      if (currentPrefs) {
+        prefs = {
+          mute: currentPrefs.mute,
+          vibrate: currentPrefs.vibrate,
+          shake: currentPrefs.shake,
+          flash: currentPrefs.flash,
+        };
+      }
       paint();
       el.classList.remove('hidden');
     },

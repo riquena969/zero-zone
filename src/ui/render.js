@@ -19,8 +19,66 @@ import { STRINGS } from './strings.js';
 // Botão de pausa na HUD (hit test compartilhado com o main via este export)
 export const PAUSE_RECT = { x: LOGICAL_W - 46, y: 10, w: 36, h: 36 };
 
-export function createRenderer(vp) {
+export function createRenderer(vp, fx = null) {
   const ctx = vp.ctx;
+
+  // ---------- Pré-cozidos (nunca shadowBlur por frame) ----------
+  // Sprite de glow: gradiente radial cor→transparente, cacheado por cor.
+  const glowCache = new Map();
+  function glowSprite(color) {
+    let c = glowCache.get(color);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, 'transparent');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    glowCache.set(color, c);
+    return c;
+  }
+
+  function drawGlow(x, y, r, color, alpha = 0.45) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(glowSprite(color), x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // Fundo + grade estáticos, cozidos uma vez por tema.
+  const staticCache = new Map();
+  function staticLayer(theme) {
+    let c = staticCache.get(theme);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = LOGICAL_W;
+    c.height = LOGICAL_H;
+    const g = c.getContext('2d');
+    g.fillStyle = theme.bg;
+    g.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    g.strokeStyle = theme.gridLine;
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let x = 0; x <= LOGICAL_W; x += CELL * 4) {
+      g.moveTo(x, HUD_H);
+      g.lineTo(x, LOGICAL_H);
+    }
+    for (let y = HUD_H; y <= LOGICAL_H; y += CELL * 4) {
+      g.moveTo(0, y);
+      g.lineTo(LOGICAL_W, y);
+    }
+    g.stroke();
+    staticCache.set(theme, c);
+    return c;
+  }
+
+  // Rastro do orbe (só visual — vive aqui)
+  const trail = [];
 
   function drawStateRects(grid, state, fillStyle) {
     ctx.fillStyle = fillStyle;
@@ -131,21 +189,37 @@ export function createRenderer(vp) {
     vp.clearAll('#000');
     vp.applyTransform();
 
-    // fundo + grade
-    ctx.fillStyle = theme.bg;
-    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    drawArenaGrid(theme);
+    // screen shake (respeita o toggle de acessibilidade)
+    if (fx) {
+      const off = fx.offset(ui.allowShake);
+      ctx.translate(off.x, off.y);
+    }
 
-    // território e paredes
+    // fundo + grade pré-cozidos por tema
+    ctx.drawImage(staticLayer(theme), 0, 0);
+
+    // território e paredes (passe extra translúcido = "glow" barato sem filtros)
     drawStateRects(game.grid, CLAIMED, theme.claimed);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.18;
+    for (const r of game.grid.rects(WALL)) {
+      const px = game.grid.cellRect(r.cx, r.cy);
+      ctx.fillStyle = theme.wall;
+      ctx.fillRect(px.x - 3, px.y - 3, r.w * CELL + 6, r.h * CELL + 6);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
     drawStateRects(game.grid, WALL, theme.wall);
 
-    // parede em crescimento (células frágeis)
+    // parede em crescimento (células frágeis pulsam de leve)
     if (game.wall) {
       ctx.fillStyle = theme.wallGrow;
       for (const c of pendingCells(game.wall)) {
         const px = game.grid.cellRect(c.cx, c.cy);
         ctx.fillRect(px.x, px.y, px.w, px.h);
+        drawGlow(px.x + px.w / 2, px.y + px.h / 2, 6, theme.wallGrow, 0.2);
+        ctx.fillStyle = theme.wallGrow;
       }
     }
 
@@ -174,6 +248,7 @@ export function createRenderer(vp) {
         continue;
       }
 
+      drawGlow(b.x, b.y, br, cor, 0.4);
       ctx.fillStyle = cor;
       ctx.beginPath();
       ctx.arc(b.x, b.y, br, 0, Math.PI * 2);
@@ -232,7 +307,26 @@ export function createRenderer(vp) {
     // orbe do jogador (pisca a 4Hz durante i-frames; oculto no attract mode)
     const p = game.player;
     const piscando = ui.hidePlayer || (p.iframes > 0 && Math.floor(p.iframes * 8) % 2 === 0);
+
+    // rastro neon do orbe
+    if (!ui.hidePlayer) {
+      trail.push({ x: p.x, y: p.y });
+      if (trail.length > 10) trail.shift();
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < trail.length; i++) {
+        ctx.globalAlpha = (i / trail.length) * 0.2;
+        ctx.fillStyle = theme.playerGlow;
+        ctx.beginPath();
+        ctx.arc(trail[i].x, trail[i].y, p.r * (0.4 + (0.5 * i) / trail.length), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
     if (!piscando) {
+      drawGlow(p.x, p.y, p.r, theme.playerGlow, 0.5);
       ctx.fillStyle = theme.player;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -262,6 +356,9 @@ export function createRenderer(vp) {
       ctx.arc(p.x, p.y, p.r + 7, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
+
+    // partículas + flash por cima do mundo, por baixo da HUD
+    if (fx) fx.draw(ctx, ui.allowFlash);
 
     if (game.countdown > 0) drawCountdown(game, theme);
 
