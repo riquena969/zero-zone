@@ -10,6 +10,10 @@ export const STRINGS = {
     title: 'ÁREA DOMINADA!',
     restart: 'aperte R para jogar de novo',
   },
+  gameover: {
+    title: 'FIM DE JOGO',
+    restart: 'aperte R para tentar de novo',
+  },
   dev: {
     slice: 'fatia 1 — jogo mínimo',
   },

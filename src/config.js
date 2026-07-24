@@ -19,6 +19,8 @@ export const CLAIMED = 2;
 // ---------- Jogador ----------
 export const PLAYER_RADIUS = 10;
 export const PLAYER_SPEED = 300; // px/s
+export const IFRAMES_TIME = 2; // s de invencibilidade após morte/quebra/realocação
+export const LIVES_START = 3;
 
 // ---------- Bolinhas ----------
 export const BALL_TYPES = {

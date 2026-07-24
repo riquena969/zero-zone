@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WALL, CLAIMED, PLAYER_RADIUS } from '../src/config.js';
 import { createGrid } from '../src/game/grid.js';
-import { makePlayer, movePlayer, depenetrate } from '../src/game/player.js';
+import { makePlayer, movePlayer, depenetrate, fits, safestPoint } from '../src/game/player.js';
 
 function makeGrid() {
   return createGrid({ cols: 10, rows: 8, cell: 8, originX: 0, originY: 56 });
@@ -69,4 +69,30 @@ test('depenetrate sem sobreposição é no-op', () => {
   const moved = depenetrate(p, g);
   assert.equal(moved, false);
   assert.deepEqual({ x: p.x, y: p.y }, { x: 40, y: 70 });
+});
+
+test('safestPoint: fica no mesmo componente, cabe, e maximiza distância da bola', () => {
+  const g = makeGrid();
+  for (let cy = 0; cy < 8; cy++) g.set(5, cy, WALL); // divide: esquerda x∈[0,40), direita x∈[48,80)
+  const bola = { x: 20, y: 70, r: 6 };
+  const ref = { x: 20, y: 100 }; // jogador morreu aqui (lado esquerdo)
+  const pt = safestPoint(g, [bola], ref.x, ref.y, PLAYER_RADIUS);
+  assert.ok(pt, 'achou ponto');
+  assert.ok(pt.x < 40, `continua no lado esquerdo: x=${pt.x}`);
+  assert.ok(fits(g, pt.x, pt.y, PLAYER_RADIUS), 'orbe cabe lá');
+  // máximo teórico nessa região: canto oposto onde o orbe cabe = (28,108) ou
+  // (12,108), ambos a √1508 ≈ 38,83 da bola — o argmax exato
+  const dist = Math.hypot(pt.x - bola.x, pt.y - bola.y);
+  assert.ok(Math.abs(dist - Math.sqrt(1508)) < 0.01, `argmax exato, veio ${dist}`);
+  assert.ok(dist > Math.hypot(ref.x - bola.x, ref.y - bola.y), 'mais longe que onde morreu');
+});
+
+test('safestPoint ignora bolas de outros componentes', () => {
+  const g = makeGrid();
+  for (let cy = 0; cy < 8; cy++) g.set(5, cy, WALL);
+  // bola só do lado DIREITO; ref do lado esquerdo
+  const bola = { x: 60, y: 88, r: 6 };
+  const pt = safestPoint(g, [bola], 20, 88, PLAYER_RADIUS);
+  assert.ok(pt, 'achou ponto mesmo sem bola no componente');
+  assert.ok(pt.x < 40, 'no componente do ref');
 });

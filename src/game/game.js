@@ -15,11 +15,14 @@ import {
   OPEN,
   PLAYER_SPEED,
   WALL_TIP_SPEED,
+  IFRAMES_TIME,
+  LIVES_START,
 } from '../config.js';
 import { createGrid } from './grid.js';
+import { circlesOverlap } from './collide.js';
 import { makeBall, stepBall } from './balls.js';
 import { spawnWall, stepWall } from './walls.js';
-import { makePlayer, movePlayer, depenetrate, fits } from './player.js';
+import { makePlayer, movePlayer, depenetrate, fits, safestPoint } from './player.js';
 
 export function createGame({ level }) {
   const grid = createGrid({ cols: GRID_W, rows: GRID_H, cell: CELL, originX: 0, originY: ARENA_Y });
@@ -34,10 +37,21 @@ export function createGame({ level }) {
     player,
     balls,
     wall: null, // parede em crescimento (máx. 1)
-    status: 'playing', // 'playing' | 'won'
+    status: 'playing', // 'playing' | 'won' | 'gameover'
     targetPct: level.targetPct,
+    lives: LIVES_START,
     update,
   };
+
+  function loseLife(cause, events) {
+    game.lives--;
+    player.iframes = IFRAMES_TIME;
+    events.push({ type: 'lifeLost', cause, lives: game.lives });
+    if (game.lives <= 0) {
+      game.status = 'gameover';
+      events.push({ type: 'gameover' });
+    }
+  }
 
   function tryTrigger(input, events) {
     if (!input.hJust && !input.vJust) return;
@@ -94,8 +108,11 @@ export function createGame({ level }) {
       }
     }
     if (best) {
-      player.x = best.x;
-      player.y = best.y;
+      // chega no ponto mais seguro do novo componente, invencível por 2s
+      const pt = safestPoint(grid, balls, best.x, best.y, player.r);
+      player.x = (pt ?? best).x;
+      player.y = (pt ?? best).y;
+      player.iframes = IFRAMES_TIME;
       events.push({ type: 'relocate' });
     }
   }
@@ -103,6 +120,9 @@ export function createGame({ level }) {
   function update(input, dt) {
     const events = [];
     if (game.status !== 'playing') return events;
+
+    // timers
+    if (player.iframes > 0) player.iframes = Math.max(0, player.iframes - dt);
 
     // jogador
     movePlayer(player, grid, input.moveX ?? 0, input.moveY ?? 0, PLAYER_SPEED, dt);
@@ -116,6 +136,7 @@ export function createGame({ level }) {
       events.push(...r.events);
       if (r.shattered) {
         game.wall = null;
+        loseLife('shatter', events); // regra clássica: quebra custa vida (sem respawn)
       } else if (r.completed) {
         game.wall = null;
         resolveCompletion(events);
@@ -125,8 +146,25 @@ export function createGame({ level }) {
     // bolinhas
     for (const b of balls) stepBall(b, grid, dt);
 
+    // toque de bolinha (ignorado durante i-frames)
+    if (game.status === 'playing' && player.iframes <= 0) {
+      for (const b of balls) {
+        if (circlesOverlap(player.x, player.y, player.r, b.x, b.y, b.r)) {
+          loseLife('ball', events);
+          if (game.status === 'playing') {
+            const pt = safestPoint(grid, balls, player.x, player.y, player.r);
+            if (pt) {
+              player.x = pt.x;
+              player.y = pt.y;
+            }
+          }
+          break;
+        }
+      }
+    }
+
     // vitória (depois de todos os claims do tick)
-    if (grid.coveredFraction() >= game.targetPct) {
+    if (game.status === 'playing' && grid.coveredFraction() >= game.targetPct) {
       game.status = 'won';
       events.push({ type: 'win', covered: grid.coveredFraction() });
     }

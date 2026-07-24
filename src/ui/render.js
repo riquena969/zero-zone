@@ -44,23 +44,32 @@ export function createRenderer(vp) {
     ctx.textAlign = 'left';
     ctx.fillText(STRINGS.gameName, 16, HUD_H / 2);
 
+    // vidas como orbes ao lado do nome
+    ctx.fillStyle = theme.danger;
+    for (let i = 0; i < game.lives; i++) {
+      ctx.beginPath();
+      ctx.arc(200 + i * 24, HUD_H / 2, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     const pct = Math.floor(game.grid.coveredFraction() * 100);
     const alvo = Math.round(game.targetPct * 100);
+    ctx.fillStyle = theme.hudText;
     ctx.font = '18px "Courier New", monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`${STRINGS.hud.conquered}: ${pct}% / ${alvo}%`, LOGICAL_W - 16, HUD_H / 2);
   }
 
-  function drawWinOverlay(theme) {
+  function drawOverlay(theme, titleColor, title, hint) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(0, HUD_H, LOGICAL_W, LOGICAL_H - HUD_H);
-    ctx.fillStyle = theme.player;
+    ctx.fillStyle = titleColor;
     ctx.textAlign = 'center';
     ctx.font = 'bold 56px "Courier New", monospace';
-    ctx.fillText(STRINGS.win.title, LOGICAL_W / 2, LOGICAL_H / 2 - 20);
+    ctx.fillText(title, LOGICAL_W / 2, LOGICAL_H / 2 - 20);
     ctx.fillStyle = theme.hudText;
     ctx.font = '22px "Courier New", monospace';
-    ctx.fillText(STRINGS.win.restart, LOGICAL_W / 2, LOGICAL_H / 2 + 32);
+    ctx.fillText(hint, LOGICAL_W / 2, LOGICAL_H / 2 + 32);
   }
 
   function draw(game, theme) {
@@ -94,20 +103,27 @@ export function createRenderer(vp) {
       ctx.fill();
     }
 
-    // orbe do jogador
+    // orbe do jogador (pisca a 4Hz durante i-frames)
     const p = game.player;
-    ctx.fillStyle = theme.player;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = theme.playerGlow;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2);
-    ctx.stroke();
+    const piscando = p.iframes > 0 && Math.floor(p.iframes * 8) % 2 === 0;
+    if (!piscando) {
+      ctx.fillStyle = theme.player;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = theme.playerGlow;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     drawHud(game, theme);
-    if (game.status === 'won') drawWinOverlay(theme);
+    if (game.status === 'won') {
+      drawOverlay(theme, theme.player, STRINGS.win.title, STRINGS.win.restart);
+    } else if (game.status === 'gameover') {
+      drawOverlay(theme, theme.danger, STRINGS.gameover.title, STRINGS.gameover.restart);
+    }
   }
 
   return { draw };

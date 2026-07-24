@@ -101,3 +101,84 @@ test('depois da quebra pode disparar de novo', () => {
   const evs = game.update({ ...IDLE, hJust: true }, DT);
   assert.ok(evs.some((e) => e.type === 'wallStart'), 'novo disparo aceito');
 });
+
+// ---------- Fatia 2: vidas e morte ----------
+
+test('começa com 3 vidas', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  assert.equal(game.lives, 3);
+});
+
+test('tocar bolinha: perde vida, respawna longe, ganha i-frames', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  const bola = game.balls[0];
+  game.player.x = bola.x;
+  game.player.y = bola.y;
+  const evs = game.update(IDLE, DT);
+  const hit = evs.find((e) => e.type === 'lifeLost');
+  assert.ok(hit, 'perdeu vida');
+  assert.equal(hit.cause, 'ball');
+  assert.equal(game.lives, 2);
+  assert.ok(game.player.iframes > 0, 'i-frames ativos');
+  const dist = Math.hypot(game.player.x - bola.x, game.player.y - bola.y);
+  assert.ok(dist > bola.r + game.player.r, `respawnou longe (dist=${dist})`);
+});
+
+test('i-frames impedem morte em sequência', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  const bola = game.balls[0];
+  game.player.x = bola.x;
+  game.player.y = bola.y;
+  game.update(IDLE, DT); // 1ª morte
+  assert.equal(game.lives, 2);
+  // teleporta de volta para cima da bola COM i-frames ativos
+  game.player.x = bola.x;
+  game.player.y = bola.y;
+  const evs = game.update(IDLE, DT);
+  assert.ok(!evs.some((e) => e.type === 'lifeLost'), 'não morreu de novo');
+  assert.equal(game.lives, 2);
+});
+
+test('quebra de parede também custa vida (sem respawn) e dá i-frames', () => {
+  const game = createGame({
+    level: { targetPct: 0.6, balls: [{ type: 'normal', x: 600, y: 300, dirX: 1, dirY: 1 }] },
+  });
+  game.update({ ...IDLE, hJust: true }, DT);
+  const posAntes = { x: game.player.x, y: game.player.y };
+  const evs = tick(game, 60); // bola quebra a parede
+  const hit = evs.find((e) => e.type === 'lifeLost');
+  assert.ok(hit, 'perdeu vida na quebra');
+  assert.equal(hit.cause, 'shatter');
+  assert.equal(game.lives, 2);
+  assert.deepEqual({ x: game.player.x, y: game.player.y }, posAntes, 'ficou onde estava');
+  assert.ok(game.player.iframes > 0, 'i-frames para não levar dupla');
+});
+
+test('3 mortes = game over', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  const bola = game.balls[0];
+  let evs = [];
+  for (let morte = 0; morte < 3; morte++) {
+    game.player.iframes = 0; // encerra a janela de invencibilidade
+    game.player.x = bola.x;
+    game.player.y = bola.y;
+    evs = game.update(IDLE, DT);
+  }
+  assert.equal(game.lives, 0);
+  assert.equal(game.status, 'gameover');
+  assert.ok(evs.some((e) => e.type === 'gameover'));
+  // jogo parado: update não faz mais nada
+  assert.deepEqual(game.update(IDLE, DT), []);
+});
+
+test('realocação após fill concede i-frames', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  game.update({ ...IDLE, hJust: true }, DT);
+  // tica até o momento exato da realocação (i-frames decaem depois, correto)
+  let relocated = false;
+  for (let i = 0; i < 200 && !relocated; i++) {
+    relocated = game.update(IDLE, DT).some((e) => e.type === 'relocate');
+  }
+  assert.ok(relocated, 'foi realocado');
+  assert.ok(game.player.iframes > 0, 'chegou invencível no novo chão');
+});
