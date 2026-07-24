@@ -26,6 +26,7 @@ import { createGame } from './game/game.js';
 import { levelSpec } from './game/levels.js';
 import { createScoring } from './game/scoring.js';
 import { createStorage } from './services/storage.js';
+import { createAudio } from './ui/audio.js';
 import { STRINGS } from './ui/strings.js';
 
 const canvas = document.getElementById('game');
@@ -37,6 +38,35 @@ const renderer = createRenderer(vp);
 
 const storage = createStorage();
 const prefs = storage.getPrefs();
+const audio = createAudio();
+audio.setMuted(prefs.mute);
+
+// iOS/Chrome: AudioContext só pode nascer num gesto do usuário
+const unlockAudio = () => audio.unlock();
+window.addEventListener('pointerdown', unlockAudio, { once: false });
+window.addEventListener('keydown', unlockAudio, { once: false });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) audio.resume();
+});
+
+// eventos do jogo → SFX (roteados no estado playing)
+const EVENT_SFX = {
+  wallStart: 'wallStart',
+  anchor: 'anchor',
+  fill: 'fill',
+  shatter: 'shatter',
+  lifeLost: 'death',
+  win: 'win',
+  gameover: 'gameover',
+  powerup: 'powerup',
+  powerupSpawn: 'countdown',
+  shieldBreak: 'shieldBreak',
+  denied: 'denied',
+  countdown: 'countdown',
+  go: 'go',
+  vault: 'vault',
+  relocate: 'relocate',
+};
 
 let themeKey = THEMES[prefs.theme] ? prefs.theme : DEFAULT_THEME;
 let theme = THEMES[themeKey];
@@ -104,6 +134,7 @@ const pauseMenu = createPauseMenu(overlayRoot, {
   onToggle: (key) => {
     prefs[key] = !prefs[key];
     storage.setPref(key, prefs[key]);
+    if (key === 'mute') audio.setMuted(prefs.mute);
     return prefs[key];
   },
 });
@@ -203,6 +234,7 @@ const machine = createStateMachine({
 
       const events = game.update(snap, dt);
       for (const e of events) {
+        if (EVENT_SFX[e.type]) audio.play(EVENT_SFX[e.type]);
         if (e.type === 'complete') {
           scoring.onWallComplete();
         } else if (e.type === 'shatter') {
@@ -219,6 +251,13 @@ const machine = createStateMachine({
         }
         // demais eventos → áudio/fx nas fatias 12/13
       }
+
+      // música reage ao jogo: intensidade = progresso rumo ao alvo
+      audio.setTension({
+        intensity: game.grid.coveredFraction() / game.targetPct,
+        nearWin: game.targetPct - game.grid.coveredFraction() < 0.1,
+        clockSlow: game.effects.clock > 0,
+      });
 
       // dica contextual do vault (one-shot, persistida)
       if (!vaultHintShown && game.player.vault) {
@@ -344,6 +383,14 @@ canvas.addEventListener('click', (e) => {
 // ---------- Loop ----------
 machine.goto('title');
 createLoop({
-  update: (dt) => machine.update(dt, input.sample()),
+  update: (dt) => {
+    const snap = input.sample();
+    if (snap.muteJust) {
+      prefs.mute = !prefs.mute;
+      storage.setPref('mute', prefs.mute);
+      audio.setMuted(prefs.mute);
+    }
+    machine.update(dt, snap);
+  },
   render: () => machine.render(),
 }).start();
