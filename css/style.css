@@ -230,3 +230,62 @@ body {
   border-color: rgba(102, 255, 194, 0.5);
   color: rgba(102, 255, 194, 0.95);
 }
+
+/* ---------- Iniciais (fliperama) ---------- */
+.initials-row {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.initial-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.initial-slot.active {
+  border-color: rgba(0, 229, 255, 0.6);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+
+.initial-slot .letter {
+  font-size: 44px;
+  font-weight: bold;
+  color: #eafcff;
+  min-width: 48px;
+}
+
+.menu-panel button.tiny {
+  min-width: 48px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+/* ---------- Placar ---------- */
+.board-table {
+  margin: 0 auto 8px;
+  border-collapse: collapse;
+  color: #bfefff;
+  font-size: 17px;
+  letter-spacing: 2px;
+}
+
+.board-table td {
+  padding: 4px 12px;
+  text-align: left;
+}
+
+.board-table td:nth-child(3) {
+  text-align: right;
+}
+
+.board-table tr.highlight td {
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.9);
+}

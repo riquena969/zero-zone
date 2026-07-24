@@ -37,7 +37,21 @@ export const STRINGS = {
     subtitle: 'cerque as bolinhas. não encoste nelas.',
     play: 'JOGAR',
     howto: 'COMO JOGAR',
+    board: 'PLACAR',
     hint: 'ENTER para jogar',
+  },
+  initials: {
+    title: 'NOVO RECORDE!',
+    prompt: 'suas iniciais',
+    confirm: 'CONFIRMAR',
+  },
+  leaderboard: {
+    title: 'PLACAR',
+    back: 'VOLTAR',
+    share: 'COMPARTILHAR',
+    shared: 'copiado para a área de transferência!',
+    empty: 'nenhum recorde ainda — seja o primeiro!',
+    shareText: (score) => `Fiz ${score} pontos no ZONA ZERO! Consegue me superar?`,
   },
   howto: {
     title: 'COMO JOGAR',

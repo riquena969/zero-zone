@@ -16,10 +16,13 @@ import {
   createHowtoScreen,
   createGameOverScreen,
   createHintToast,
+  createInitialsScreen,
+  createLeaderboardScreen,
 } from './ui/screens.js';
 import { createGame } from './game/game.js';
 import { levelSpec } from './game/levels.js';
 import { createScoring } from './game/scoring.js';
+import { createStorage } from './services/storage.js';
 import { STRINGS } from './ui/strings.js';
 
 const canvas = document.getElementById('game');
@@ -28,8 +31,12 @@ const vp = createViewport(canvas, { logicalW: LOGICAL_W, logicalH: LOGICAL_H });
 const input = createKeyboardInput(window);
 const renderer = createRenderer(vp);
 
-let themeKey = DEFAULT_THEME;
+const storage = createStorage();
+const prefs = storage.getPrefs();
+
+let themeKey = THEMES[prefs.theme] ? prefs.theme : DEFAULT_THEME;
 let theme = THEMES[themeKey];
+let hi = storage.getLeaderboard()[0]?.score ?? 0;
 
 // ---------- Estado da run ----------
 const newSeed = () => (Math.random() * 0xffffffff) >>> 0; // UI pode ser aleatória; o jogo é seedado
@@ -37,7 +44,7 @@ let seed = newSeed();
 let zone = 1;
 let game = null;
 let scoring = createScoring();
-let vaultHintShown = false;
+let vaultHintShown = prefs.hintsSeen.includes('vault');
 
 function startZone(z, lives) {
   zone = z;
@@ -76,6 +83,7 @@ function makeAttract() {
 const titleScreen = createTitleScreen(overlayRoot, {
   onPlay: () => machine.goto('playing', { fresh: true }),
   onHowto: () => machine.goto('howto'),
+  onBoard: () => machine.goto('leaderboard'),
 });
 const howtoScreen = createHowtoScreen(overlayRoot, { onBack: () => machine.goto('title') });
 const pauseMenu = createPauseMenu(overlayRoot, {
@@ -87,6 +95,7 @@ const pauseMenu = createPauseMenu(overlayRoot, {
   onTheme: (key) => {
     themeKey = key;
     theme = THEMES[key];
+    storage.setPref('theme', key);
   },
 });
 const levelClearMenu = createLevelClearMenu(overlayRoot, {
@@ -101,6 +110,39 @@ const gameOverScreen = createGameOverScreen(overlayRoot, {
 });
 const tutorialBar = createTutorialBar(overlayRoot);
 const hintToast = createHintToast(overlayRoot);
+
+const initialsScreen = createInitialsScreen(overlayRoot, {
+  onSubmit: (name) => {
+    const pos = storage.addScore({
+      name,
+      score: scoring.score,
+      level: scoring.stats.zoneReached,
+    });
+    hi = storage.getLeaderboard()[0]?.score ?? hi;
+    machine.goto('leaderboard', { highlight: pos });
+  },
+});
+
+const leaderboardScreen = createLeaderboardScreen(overlayRoot, {
+  onBack: () => machine.goto('title'),
+  onShare: shareScore,
+});
+
+async function shareScore() {
+  const best = storage.getLeaderboard()[0];
+  const text = STRINGS.leaderboard.shareText(best ? best.score : scoring.score);
+  const url = location.href;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: STRINGS.gameName, text, url });
+    } else {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      hintToast.show(STRINGS.leaderboard.shared);
+    }
+  } catch {
+    // usuário cancelou o share — sem drama
+  }
+}
 
 // ---------- Estados ----------
 let attract = null;
@@ -161,19 +203,20 @@ const machine = createStateMachine({
         } else if (e.type === 'win') {
           machine.goto('levelclear');
         } else if (e.type === 'gameover') {
-          machine.goto('gameover');
+          machine.goto(storage.qualifies(scoring.score) ? 'initials' : 'gameover');
         }
         // demais eventos → áudio/fx nas fatias 12/13
       }
 
-      // dica contextual do vault (one-shot por sessão)
+      // dica contextual do vault (one-shot, persistida)
       if (!vaultHintShown && game.player.vault) {
         vaultHintShown = true;
+        storage.setPref('hintsSeen', [...prefs.hintsSeen, 'vault']);
         hintToast.show(STRINGS.hints.vault);
       }
     },
     render() {
-      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+      renderer.draw(game, theme, { zone, score: scoring.score, hi });
     },
   },
 
@@ -184,7 +227,7 @@ const machine = createStateMachine({
       if (snap.pauseJust) machine.goto('playing');
     },
     render() {
-      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+      renderer.draw(game, theme, { zone, score: scoring.score, hi });
     },
   },
 
@@ -213,7 +256,7 @@ const machine = createStateMachine({
     },
     render() {
       const scale = Math.max(0, 1 - this.animT / 1.5);
-      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0, ballScale: scale });
+      renderer.draw(game, theme, { zone, score: scoring.score, hi, ballScale: scale });
     },
   },
 
@@ -224,7 +267,36 @@ const machine = createStateMachine({
       if (snap.confirmJust || snap.restartJust) machine.goto('playing', { fresh: true });
     },
     render() {
-      renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
+      renderer.draw(game, theme, { zone, score: scoring.score, hi });
+    },
+  },
+
+  initials: {
+    enter: () => initialsScreen.show(scoring.score),
+    exit: () => initialsScreen.hide(),
+    render() {
+      renderer.draw(game ?? attract, theme, { zone, score: scoring.score, hi, hideHud: !game });
+    },
+  },
+
+  leaderboard: {
+    enter(params) {
+      leaderboardScreen.show(storage.getLeaderboard(), params && params.highlight);
+    },
+    exit: () => leaderboardScreen.hide(),
+    update(dt, snap) {
+      if (attract) attract.update({}, dt);
+      if (snap.pauseJust) machine.goto('title');
+    },
+    render() {
+      const backdrop = game ?? attract;
+      renderer.draw(backdrop, theme, {
+        zone,
+        score: scoring.score,
+        hi,
+        hidePlayer: backdrop === attract,
+        hideHud: backdrop === attract,
+      });
     },
   },
 });
