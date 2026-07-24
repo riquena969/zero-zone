@@ -29,6 +29,7 @@ export const STRINGS = {
   levelclear: {
     dominated: (zone) => `ZONA ${zone} DOMINADA!`,
     conquered: (pct) => `${pct}% conquistado`,
+    bonus: (b) => `Vidas +${b.livesBonus} · Excedente +${b.excessBonus} · Tempo +${b.timeBonus}`,
     next: 'PRÓXIMA ZONA',
   },
   tutorial: 'SETAS/WASD mover · H parede horizontal · V parede vertical · segure contra uma parede para escalar',

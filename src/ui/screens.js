@@ -56,6 +56,7 @@ export function createLevelClearMenu(root, { onNext }) {
     <div class="menu-panel">
       <h2 data-slot="title"></h2>
       <p data-slot="stats"></p>
+      <p data-slot="bonus"></p>
       <button data-act="next">${STRINGS.levelclear.next}</button>
     </div>
   `;
@@ -63,11 +64,12 @@ export function createLevelClearMenu(root, { onNext }) {
   el.querySelector('[data-act="next"]').addEventListener('click', () => onNext());
 
   return {
-    show(zone, coveredFraction) {
+    show(zone, coveredFraction, bonus) {
       el.querySelector('[data-slot="title"]').textContent = STRINGS.levelclear.dominated(zone);
       el.querySelector('[data-slot="stats"]').textContent = STRINGS.levelclear.conquered(
         Math.floor(coveredFraction * 100),
       );
+      el.querySelector('[data-slot="bonus"]').textContent = bonus ? STRINGS.levelclear.bonus(bonus) : '';
       el.classList.remove('hidden');
     },
     hide() {

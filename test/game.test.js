@@ -224,6 +224,22 @@ test('vidas iniciais customizadas (progressão entre zonas)', () => {
   assert.equal(game.lives, 5);
 });
 
+test('bônus de tempo: decresce jogando, congelado no countdown, nunca negativo', () => {
+  const comCountdown = createGame({
+    level: { targetPct: 0.6, countdown: 0.5, balls: [{ type: 'normal', x: 200, y: 200, dirX: 1, dirY: 1 }] },
+  });
+  const t0 = comCountdown.timeLeft;
+  comCountdown.update(IDLE, DT);
+  assert.equal(comCountdown.timeLeft, t0, 'congelado durante o countdown');
+
+  const game = createGame({ level: nivelTeste(0.6) });
+  const antes = game.timeLeft;
+  tick(game, 60); // 1s
+  assert.ok(Math.abs(game.timeLeft - (antes - 1)) < 0.001, 'caiu 1s');
+  tick(game, 60 * 120); // 2 minutos — passa do limite
+  assert.equal(game.timeLeft, 0, 'não fica negativo');
+});
+
 test('realocação após fill concede i-frames', () => {
   const game = createGame({ level: nivelTeste(0.6) });
   game.update({ ...IDLE, hJust: true }, DT);

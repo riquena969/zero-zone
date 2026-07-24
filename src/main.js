@@ -2,7 +2,7 @@
 // Única ponte entre o jogo puro (src/game/) e o mundo (DOM, canvas, áudio).
 // Orquestra a RUN: zona → zona, vidas carregadas (+1 por zona, teto), R = nova run.
 
-import { LOGICAL_W, LOGICAL_H, THEMES, DEFAULT_THEME, LIVES_MAX } from './config.js';
+import { LOGICAL_W, LOGICAL_H, GRID_W, GRID_H, THEMES, DEFAULT_THEME, LIVES_MAX } from './config.js';
 import { createLoop } from './core/loop.js';
 import { createViewport } from './ui/viewport.js';
 import { createKeyboardInput } from './ui/input.js';
@@ -10,6 +10,7 @@ import { createRenderer, PAUSE_RECT } from './ui/render.js';
 import { createPauseMenu, createLevelClearMenu, createTutorialBar } from './ui/screens.js';
 import { createGame } from './game/game.js';
 import { levelSpec } from './game/levels.js';
+import { createScoring } from './game/scoring.js';
 
 const canvas = document.getElementById('game');
 const overlayRoot = document.getElementById('overlay-root');
@@ -25,12 +26,14 @@ const newSeed = () => (Math.random() * 0xffffffff) >>> 0; // UI pode ser aleató
 let seed = newSeed();
 let zone = 1;
 let game = null;
+let scoring = createScoring();
 let paused = false;
 let levelClearShown = false;
 
 function startZone(z, lives) {
   zone = z;
   game = createGame({ level: levelSpec(z, seed), lives });
+  scoring.setZone(z);
   levelClearShown = false;
   if (z === 1) tutorialBar.show();
   else tutorialBar.hide();
@@ -38,6 +41,7 @@ function startZone(z, lives) {
 
 function newRun() {
   seed = newSeed();
+  scoring = createScoring();
   startZone(1, undefined);
 }
 
@@ -106,16 +110,30 @@ function update(dt) {
   const events = game.update(snap, dt);
 
   for (const e of events) {
-    if (e.type === 'win' && !levelClearShown) {
+    if (e.type === 'complete') {
+      scoring.onWallComplete();
+    } else if (e.type === 'shatter') {
+      scoring.onShatter();
+    } else if (e.type === 'lifeLost' && e.cause === 'ball') {
+      scoring.onDeath();
+    } else if (e.type === 'fill') {
+      scoring.onFill(e.cells / (GRID_W * GRID_H), zone);
+    } else if (e.type === 'win' && !levelClearShown) {
       levelClearShown = true;
-      levelClearMenu.show(zone, game.grid.coveredFraction());
+      const bonus = scoring.zoneBonus({
+        lives: game.lives,
+        covered: game.grid.coveredFraction(),
+        target: game.targetPct,
+        timeLeft: game.timeLeft,
+      });
+      levelClearMenu.show(zone, game.grid.coveredFraction(), bonus);
     }
     // demais eventos → áudio/fx nas fatias 12/13
   }
 }
 
 function render() {
-  renderer.draw(game, theme, { zone, score: 0, hi: 0 });
+  renderer.draw(game, theme, { zone, score: scoring.score, hi: 0 });
 }
 
 newRun();

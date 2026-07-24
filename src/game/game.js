@@ -17,6 +17,7 @@ import {
   WALL_TIP_SPEED,
   IFRAMES_TIME,
   LIVES_START,
+  TIME_BONUS_START,
 } from '../config.js';
 import { createGrid } from './grid.js';
 import { circlesOverlap } from './collide.js';
@@ -41,6 +42,7 @@ export function createGame({ level, lives }) {
     targetPct: level.targetPct,
     zone: level.zone ?? 1,
     countdown: level.countdown ?? 0, // 3-2-1 congelado no início da zona
+    timeLeft: TIME_BONUS_START, // regressivo, só para bônus — a zona nunca falha por tempo
     lives: lives ?? LIVES_START,
     update,
   };
@@ -144,6 +146,7 @@ export function createGame({ level, lives }) {
 
     // timers
     if (player.iframes > 0) player.iframes = Math.max(0, player.iframes - dt);
+    if (game.timeLeft > 0) game.timeLeft = Math.max(0, game.timeLeft - dt);
 
     // jogador: vault primeiro; se saltou, o movimento deste tick já foi o salto
     const vr = updateVault(player, grid, input.moveX ?? 0, input.moveY ?? 0, dt);

@@ -29,6 +29,16 @@ export const SPAWN_MARGIN = 48; // px das bordas da arena para spawn de bolas
 export const SPAWN_MIN_PLAYER_DIST = 220; // px mínimos entre bola e jogador no spawn
 export const SPAWN_MIN_BALL_DIST = 60; // px mínimos entre bolas no spawn
 
+// ---------- Pontuação ----------
+export const POINTS_PER_PCT = 100; // pontos por 1% conquistado (antes dos multiplicadores)
+export const BIG_CHUNK_PCT = 0.15; // fill único ≥ 15% da arena vale 2×
+export const COMBO_STEP = 0.5; // multiplicador: 1 + combo × step
+export const COMBO_MULT_MAX = 4;
+export const ZONE_BONUS_PER_LIFE = 500;
+export const ZONE_BONUS_PER_EXCESS_PCT = 100; // por ponto % acima do alvo
+export const TIME_BONUS_START = 60; // s de bônus de tempo por zona (regressivo, só bônus)
+export const TIME_BONUS_RATE = 50; // pontos por segundo restante
+
 // ---------- Vault (pular parede) ----------
 export const VAULT_TIME = 0.4; // s segurando contra a parede
 export const VAULT_PRESS_MIN = 0.4; // componente mínimo do movimento na direção da parede
