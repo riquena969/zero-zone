@@ -2,6 +2,8 @@
 
 _Plano aprovado em 2026-07-23. Especificação de design completa em [`docs/superpowers/specs/2026-07-23-zona-zero-design.md`](superpowers/specs/2026-07-23-zona-zero-design.md)._
 
+> **STATUS (2026-07-24): as 15 fatias foram concluídas — jogo no ar em https://riquena969.github.io/zero-zone/ (110 testes passando).** Para futuros deploys: bump da versão do cache em `sw.js` (`zona-zero-vN`) + push.
+
 ## Visão geral
 
 Jogo de browser inspirado no JezzBall: você controla um **orbe de energia** dentro da arena, não pode encostar nas bolinhas e dispara paredes divisórias de onde estiver (**H** = horizontal, **V** = vertical). Ao completar uma parede, toda área desconectada das bolinhas vira **território conquistado**. Objetivo: conquistar a % alvo de cada ZONA. Roda em PC (setinhas/WASD + H/V) e mobile (paisagem, joystick + 2 botões). Placar top-10 local com iniciais de 3 letras.
@@ -69,7 +71,7 @@ Cada fatia termina com: `node --test` verde + checagem manual no navegador + 1 c
 ### ✅ Fatia 0 — Esqueleto
 `git init`, `index.html`, `css/style.css`, `src/main.js`, `src/config.js`, `src/core/loop.js` (timestep fixo 60Hz + clamp anti-espiral), `src/ui/viewport.js` (letterbox + DPR + `toLogical`). Canvas renderizando arena com grade neon. Design doc salvo no repo.
 
-### 🔨 Fatia 1 — Jogo mínimo (em andamento)
+### ✅ Fatia 1 — Jogo mínimo
 TDD nos módulos puros (**50 testes passando**): `rng`, `grid` (flood fill, claim, meshing, property test com 200 seeds), `collide` (anti-tunneling), `balls` (confinamento 10k ticks), `walls` (ancoragem/quebra/toco), `player` (clamp, depenetrate), `game` (integração headless: disparo→split→claim→vitória, negados, quebra).
 Falta: `ui/input.js` (teclado), `ui/render.js` (flat), `ui/strings.js`, fiação no `main.js`. Resultado: mover + H/V + 1 bola + quebra + claim + vitória (R reinicia). **Checkpoint de diversão com o usuário — tunar ritmo aqui.**
 
