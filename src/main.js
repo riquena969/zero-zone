@@ -1,62 +1,45 @@
 // ZONA ZERO — raiz de composição.
-// Este arquivo é a ÚNICA ponte entre o jogo puro (src/game/) e o mundo
-// (DOM, canvas, áudio, storage). Por enquanto: esqueleto renderizando a arena.
+// Única ponte entre o jogo puro (src/game/) e o mundo (DOM, canvas, áudio).
+// Fatia 1: jogo mínimo jogável — mover, disparar H/V, cercar a bolinha, vencer.
 
-import { LOGICAL_W, LOGICAL_H, HUD_H, CELL, THEMES, DEFAULT_THEME } from './config.js';
+import { LOGICAL_W, LOGICAL_H, THEMES, DEFAULT_THEME } from './config.js';
 import { createLoop } from './core/loop.js';
 import { createViewport } from './ui/viewport.js';
+import { createKeyboardInput } from './ui/input.js';
+import { createRenderer } from './ui/render.js';
+import { createGame } from './game/game.js';
 
 const canvas = document.getElementById('game');
 const vp = createViewport(canvas, { logicalW: LOGICAL_W, logicalH: LOGICAL_H });
+const input = createKeyboardInput(window);
+const renderer = createRenderer(vp);
 
-let theme = THEMES[DEFAULT_THEME];
+const theme = THEMES[DEFAULT_THEME];
 
-function update(_dt) {
-  // Fatia 1: aqui entra game.update(input, dt) → eventos.
+// Nível de teste da fatia 1 (a tabela de verdade chega na fatia 5)
+function novoJogo() {
+  return createGame({
+    level: {
+      targetPct: 0.6,
+      balls: [{ type: 'normal', x: 320, y: 250, dirX: 1, dirY: 1 }],
+    },
+  });
+}
+
+let game = novoJogo();
+
+function update(dt) {
+  const snap = input.sample();
+  if (snap.restartJust) {
+    game = novoJogo();
+    return;
+  }
+  game.update(snap, dt);
+  // eventos → áudio/fx nas fatias 12/13
 }
 
 function render() {
-  vp.checkResize();
-  const ctx = vp.ctx;
-
-  vp.clearAll('#000');
-  vp.applyTransform();
-
-  // Fundo da tela lógica
-  ctx.fillStyle = theme.bg;
-  ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-
-  // Grade tênue da arena (a cada 4 células fica elegante sem poluir)
-  ctx.strokeStyle = theme.gridLine;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = 0; x <= LOGICAL_W; x += CELL * 4) {
-    ctx.moveTo(x, HUD_H);
-    ctx.lineTo(x, LOGICAL_H);
-  }
-  for (let y = HUD_H; y <= LOGICAL_H; y += CELL * 4) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(LOGICAL_W, y);
-  }
-  ctx.stroke();
-
-  // Separador da HUD
-  ctx.strokeStyle = theme.claimedEdge;
-  ctx.beginPath();
-  ctx.moveTo(0, HUD_H - 0.5);
-  ctx.lineTo(LOGICAL_W, HUD_H - 0.5);
-  ctx.stroke();
-
-  // Placeholder de título (vira HUD de verdade na fatia 4)
-  ctx.fillStyle = theme.hudText;
-  ctx.font = 'bold 24px "Courier New", monospace';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText('ZONA ZERO', 16, HUD_H / 2);
-  ctx.textAlign = 'right';
-  ctx.font = '16px "Courier New", monospace';
-  ctx.fillText('esqueleto — fatia 0', LOGICAL_W - 16, HUD_H / 2);
+  renderer.draw(game, theme);
 }
 
-const loop = createLoop({ update, render });
-loop.start();
+createLoop({ update, render }).start();
