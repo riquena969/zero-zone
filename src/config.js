@@ -22,6 +22,11 @@ export const PLAYER_SPEED = 300; // px/s
 export const IFRAMES_TIME = 2; // s de invencibilidade após morte/quebra/realocação
 export const LIVES_START = 3;
 
+// ---------- Vault (pular parede) ----------
+export const VAULT_TIME = 0.4; // s segurando contra a parede
+export const VAULT_PRESS_MIN = 0.4; // componente mínimo do movimento na direção da parede
+export const VAULT_MAX_SCAN = 6; // espessura máxima de parede atravessável (células)
+
 // ---------- Bolinhas ----------
 export const BALL_TYPES = {
   normal: { r: 12, axisSpeed: 170 },

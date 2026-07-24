@@ -1,7 +1,7 @@
 // Renderer do mundo (fatia 1: flat, sem glow — o neon de verdade vem na fatia 13).
 // Desenha a partir do estado puro do jogo; nunca muta nada.
 
-import { WALL, CLAIMED, LOGICAL_W, LOGICAL_H, HUD_H, CELL } from '../config.js';
+import { WALL, CLAIMED, LOGICAL_W, LOGICAL_H, HUD_H, CELL, VAULT_TIME } from '../config.js';
 import { pendingCells } from '../game/walls.js';
 import { STRINGS } from './strings.js';
 
@@ -115,6 +115,16 @@ export function createRenderer(vp) {
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // arco de progresso do vault (escalando a parede)
+    if (p.vault && p.vault.progress > 0) {
+      const frac = Math.min(1, p.vault.progress / VAULT_TIME);
+      ctx.strokeStyle = theme.playerGlow;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 7, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
 

@@ -171,6 +171,35 @@ test('3 mortes = game over', () => {
   assert.deepEqual(game.update(IDLE, DT), []);
 });
 
+test('trigger é negado durante o canal de vault', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  // constrói uma parede vertical na grade e cola o jogador nela
+  for (let cy = 0; cy < game.grid.rows; cy++) game.grid.set(100, cy, 1); // WALL
+  const face = game.grid.cellRect(100, 0).x; // px da face esquerda
+  game.player.x = face - game.player.r;
+  game.player.y = 388;
+  // pressiona contra a parede para iniciar o canal
+  game.update({ ...IDLE, moveX: 1 }, DT);
+  const evs = game.update({ ...IDLE, moveX: 1, hJust: true }, DT);
+  const denied = evs.find((e) => e.type === 'denied');
+  assert.ok(denied, 'negado');
+  assert.equal(denied.reason, 'vaulting');
+});
+
+test('vault no jogo: atravessa parede pronta e emite evento', () => {
+  const game = createGame({ level: nivelTeste(0.6) });
+  for (let cy = 0; cy < game.grid.rows; cy++) game.grid.set(100, cy, 1);
+  const face = game.grid.cellRect(100, 0).x;
+  game.player.x = face - game.player.r;
+  game.player.y = 388;
+  let vaulted = false;
+  for (let i = 0; i < 60 && !vaulted; i++) {
+    vaulted = game.update({ ...IDLE, moveX: 1 }, DT).some((e) => e.type === 'vault');
+  }
+  assert.ok(vaulted, 'evento vault');
+  assert.ok(game.player.x > face + 8, `do outro lado: x=${game.player.x}`);
+});
+
 test('realocação após fill concede i-frames', () => {
   const game = createGame({ level: nivelTeste(0.6) });
   game.update({ ...IDLE, hJust: true }, DT);

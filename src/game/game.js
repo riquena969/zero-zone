@@ -22,7 +22,7 @@ import { createGrid } from './grid.js';
 import { circlesOverlap } from './collide.js';
 import { makeBall, stepBall } from './balls.js';
 import { spawnWall, stepWall } from './walls.js';
-import { makePlayer, movePlayer, depenetrate, fits, safestPoint } from './player.js';
+import { makePlayer, movePlayer, depenetrate, fits, safestPoint, updateVault } from './player.js';
 
 export function createGame({ level }) {
   const grid = createGrid({ cols: GRID_W, rows: GRID_H, cell: CELL, originX: 0, originY: ARENA_Y });
@@ -58,6 +58,10 @@ export function createGame({ level }) {
     const axis = input.hJust ? 'h' : 'v'; // H vence V no mesmo tick
     if (game.wall) {
       events.push({ type: 'denied', reason: 'busy' });
+      return;
+    }
+    if (player.vault) {
+      events.push({ type: 'denied', reason: 'vaulting' });
       return;
     }
     const c = grid.cellAt(player.x, player.y);
@@ -124,8 +128,13 @@ export function createGame({ level }) {
     // timers
     if (player.iframes > 0) player.iframes = Math.max(0, player.iframes - dt);
 
-    // jogador
-    movePlayer(player, grid, input.moveX ?? 0, input.moveY ?? 0, PLAYER_SPEED, dt);
+    // jogador: vault primeiro; se saltou, o movimento deste tick já foi o salto
+    const vr = updateVault(player, grid, input.moveX ?? 0, input.moveY ?? 0, dt);
+    if (vr && vr.hopped) {
+      events.push({ type: 'vault' });
+    } else {
+      movePlayer(player, grid, input.moveX ?? 0, input.moveY ?? 0, PLAYER_SPEED, dt);
+    }
 
     // trigger de parede
     tryTrigger(input, events);
